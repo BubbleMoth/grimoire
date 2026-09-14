@@ -44,7 +44,9 @@
     "updateAvailable": "Atualização disponível",
     "viewRelease": "Ver versão",
     "github": "Repositório do GitHub",
-    "openAbout": "Acerca do Grimoire"
+    "openAbout": "Acerca do Grimoire",
+    "changelog": "Registo de alterações",
+    "currentVersion": "atual"
   },
   "common": {
     "save": "Guardar",
@@ -2618,7 +2620,8 @@
     "remove": "Remover",
     "failed": "Não foi possível definir a imagem",
     "searchFailed": "Não foi possível carregar as imagens",
-    "ungrouped": "Ficheiros soltos"
+    "ungrouped": "Ficheiros soltos",
+    "chooseVersion": "Escolher uma versão"
   },
   "backups": {
     "notice": {
@@ -2798,6 +2801,7 @@
     "sendToOwnedCampaign": "Enviar para uma campanha que dirige",
     "pickCharacterNext": "Escolha uma personagem a seguir",
     "chooseCharacter": "Escolher personagem",
-    "chooseCharacterHint": "De quem será este token em {{name}}."
+    "chooseCharacterHint": "De quem será este token em {{name}}.",
+    "frameVersions": "Versões"
   }
 }
