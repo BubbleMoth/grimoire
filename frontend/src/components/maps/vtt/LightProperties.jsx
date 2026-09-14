@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { LuTrash2 } from 'react-icons/lu'
-import { argbToAlpha, argbToRgbHex, rgbHexToArgb } from './color'
+import { argbToAlpha, argbToCss, argbToRgbHex, rgbHexToArgb } from './color'
 import Field from './Field'
 import NumberNudge from './NumberNudge'
+import { LIGHT_PRESETS, PRESET_CUSTOM, applyPreset, matchPreset } from './lightPresets'
 import { btnStyle, inputStyle } from './ui'
 
 /**
@@ -18,15 +19,71 @@ import { btnStyle, inputStyle } from './ui'
  * `intensity` has no scale agreed between VTTs (Foundry, Roll20 and FGU each
  * read it differently), so the preview here can never match a target VTT
  * exactly; what is guaranteed is that the exported value is the one entered.
+ *
+ * The preset picker leads, because "this is a torch" is the answer the user
+ * actually has; range, intensity and colour are how a torch is *spelled*, and
+ * deriving them from a blank form is the tedious part. Picking one fills the
+ * three fields below, which stay editable — a preset is a starting point, and
+ * tuning one simply reads as Custom again.
  */
 export default function LightProperties({ light, onChange, onDelete }) {
   const { t } = useTranslation()
   const alpha = argbToAlpha(light.color)
 
   const set = (patch) => onChange({ ...light, ...patch })
+  const preset = matchPreset(light)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Field label={t('maps.vtt.light.preset')}>
+        <select
+          value={preset}
+          aria-label={t('maps.vtt.light.preset')}
+          onChange={(e) => {
+            // "Custom" is a label for "none of these", not a preset to apply:
+            // choosing it must leave the light exactly as it is rather than
+            // resetting the values the user just tuned.
+            if (e.target.value === PRESET_CUSTOM) return
+            onChange(applyPreset(light, e.target.value))
+          }}
+          style={{ ...inputStyle, width: '100%' }}
+        >
+          <option value={PRESET_CUSTOM}>{t('maps.vtt.light.presetCustom')}</option>
+          {LIGHT_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {t(`maps.vtt.light.presets.${p.id}`)}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      {/* A row of swatches as well as the dropdown. The names are the useful
+          handle, but "brazier" versus "bonfire" is a question about colour and
+          reach, and the swatch answers it without opening the menu. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {LIGHT_PRESETS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            title={t(`maps.vtt.light.presets.${p.id}`)}
+            aria-label={t(`maps.vtt.light.presets.${p.id}`)}
+            aria-pressed={preset === p.id}
+            data-testid={`light-preset-${p.id}`}
+            onClick={() => onChange(applyPreset(light, p.id))}
+            style={{
+              width: 22,
+              height: 22,
+              padding: 0,
+              borderRadius: 4,
+              cursor: 'pointer',
+              background: argbToCss(p.color),
+              border:
+                preset === p.id ? '2px solid var(--gold, #d4af37)' : '1px solid var(--border)',
+            }}
+          />
+        ))}
+      </div>
+
       <div style={{ display: 'flex', gap: 10 }}>
         <Field label={t('maps.vtt.light.x')}>
           <NumberNudge

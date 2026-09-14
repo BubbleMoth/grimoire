@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LightProperties from './LightProperties'
+import { LIGHT_PRESETS } from './lightPresets'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k, o) => (o ? `${k}:${JSON.stringify(o)}` : k) }),
@@ -128,5 +129,77 @@ describe('LightProperties', () => {
       i.getAttribute('aria-label')
     )
     expect(labels.join(' ')).not.toMatch(/animation|falloff|temperature|dim|bright/i)
+  })
+
+  describe('presets', () => {
+    it('offers a preset for every shipped light', () => {
+      render(<LightProperties light={light} onChange={vi.fn()} onDelete={vi.fn()} />)
+      const select = screen.getByLabelText('maps.vtt.light.preset')
+      // One option per preset, plus Custom.
+      expect(select.querySelectorAll('option').length).toBe(LIGHT_PRESETS.length + 1)
+    })
+
+    it('fills range, intensity and colour from the chosen preset', async () => {
+      const onChange = vi.fn()
+      render(<LightProperties light={light} onChange={onChange} onDelete={vi.fn()} />)
+      await userEvent.selectOptions(screen.getByLabelText('maps.vtt.light.preset'), 'torch')
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ range: 5, intensity: 0.25, color: 'fff79308' })
+      )
+    })
+
+    it('keeps the light where it was placed when a preset is applied', async () => {
+      const onChange = vi.fn()
+      render(
+        <LightProperties
+          light={{ ...light, position: { x: 9, y: 4 } }}
+          onChange={onChange}
+          onDelete={vi.fn()}
+        />
+      )
+      await userEvent.selectOptions(screen.getByLabelText('maps.vtt.light.preset'), 'brazier')
+      expect(onChange.mock.calls[0][0].position).toEqual({ x: 9, y: 4 })
+    })
+
+    it('applies a preset from its swatch too', async () => {
+      const onChange = vi.fn()
+      render(<LightProperties light={light} onChange={onChange} onDelete={vi.fn()} />)
+      await userEvent.click(screen.getByTestId('light-preset-candle'))
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ range: 1 }))
+    })
+
+    it('shows the matching preset for a light that already is one', () => {
+      const torch = LIGHT_PRESETS.find((p) => p.id === 'torch')
+      render(
+        <LightProperties
+          light={{ position: { x: 0, y: 0 }, ...torch }}
+          onChange={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      )
+      expect(screen.getByLabelText('maps.vtt.light.preset')).toHaveValue('torch')
+      expect(screen.getByTestId('light-preset-torch')).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('reads as custom once the light is tuned away from its preset', () => {
+      const torch = LIGHT_PRESETS.find((p) => p.id === 'torch')
+      render(
+        <LightProperties
+          light={{ position: { x: 0, y: 0 }, ...torch, range: 11 }}
+          onChange={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      )
+      expect(screen.getByLabelText('maps.vtt.light.preset')).toHaveValue('custom')
+    })
+
+    it('does not rewrite the light when Custom is chosen', async () => {
+      // Custom is a label for "none of these", not a preset to apply — picking
+      // it must not reset the values the user just tuned.
+      const onChange = vi.fn()
+      render(<LightProperties light={light} onChange={onChange} onDelete={vi.fn()} />)
+      await userEvent.selectOptions(screen.getByLabelText('maps.vtt.light.preset'), 'custom')
+      expect(onChange).not.toHaveBeenCalled()
+    })
   })
 })

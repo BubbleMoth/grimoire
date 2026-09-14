@@ -21,6 +21,8 @@ Release candidates are omitted; their contents are rolled into the stable releas
 - Token, audio, and model detail views step through their folder
 - Maps, tokens, audio tracks, and models can be favorited from their detail view
 - Redesign add-on install dialog to surface changelogs and source code
+- Filter tags with AND/OR/NOT groups, and align genre and dice filters
+- Allow plugin/theme/note installs from multiple sources
 
 ### Fixed
 

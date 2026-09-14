@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { LuTriangleAlert } from 'react-icons/lu'
 import { argbToAlpha, argbToCss, argbToRgbHex, rgbHexToArgb } from './color'
 import Field from './Field'
-import { inputStyle, sectionTitleStyle } from './ui'
+import { inputStyle } from './ui'
 
 /**
  * Map-wide environment settings (issue #127).
@@ -32,8 +32,6 @@ export default function EnvironmentPanel({ environment, lightCount, onChange }) 
 
   return (
     <div>
-      <div style={sectionTitleStyle}>{t('maps.vtt.environment.title')}</div>
-
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 13 }}>
         <input
           type="checkbox"

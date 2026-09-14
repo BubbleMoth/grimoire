@@ -653,7 +653,26 @@
         "intensityHint": "{{value}} — elke VTT leest dit anders, dus de weergave is bij benadering.",
         "color": "Kleur",
         "opacity": "Dekking",
-        "shadows": "Werpt schaduwen"
+        "shadows": "Werpt schaduwen",
+        "preset": "Voorinstelling",
+        "presetCustom": "Aangepast",
+        "presets": {
+          "candle": "Kaars",
+          "lantern": "Lantaarn",
+          "sconce": "Wandkandelaar",
+          "hearth": "Haard",
+          "torch": "Fakkel",
+          "brazier": "Vuurkorf",
+          "campfire": "Kampvuur",
+          "bonfire": "Vreugdevuur",
+          "daylight": "Daglicht",
+          "moonlight": "Maanlicht",
+          "swamp": "Moerasgloed",
+          "arcane": "Arcaan",
+          "gloom": "Schemer",
+          "ambient": "Omgeving",
+          "shade": "Schaduw"
+        }
       },
       "environment": {
         "title": "Omgeving",
@@ -733,7 +752,8 @@
           "pan": "Sleep met de middelste of rechtermuisknop om te verschuiven.",
           "zoom": "Scroll om te zoomen.",
           "freeSnap": "Houd Alt ingedrukt om één punt buiten het raster te plaatsen."
-        }
+        },
+        "title": "Gereedschap"
       },
       "preview": {
         "title": "Spelersweergave",
@@ -741,10 +761,15 @@
         "hide": "Spelersweergave verbergen",
         "hint": "Verduistert alles wat een pion op de kaart niet zou kunnen zien, zodat je je muren kunt controleren zonder te exporteren.",
         "moveHint": "Sleep de blauwe pion of verplaats hem met de pijltjestoetsen (Shift voor een half vakje).",
-        "sight": "Zicht (vakjes)",
-        "light": "Pionlicht (vakjes)",
-        "rangeHint": "Zicht 0 betekent onbeperkt – alleen muren houden het tegen. Pionlicht is de fakkel die de pion draagt.",
-        "notExported": "De pion en deze bereiken zijn alleen voor de weergave. Ze worden niet opgeslagen en komen nooit in het .uvtt-bestand."
+        "light": "Licht van de pion (vakjes)",
+        "notExported": "De pion en deze bereiken zijn alleen voor de weergave. Ze worden niet opgeslagen en komen nooit in het .uvtt-bestand.",
+        "vision": "Zicht",
+        "visionHint": "Geeft het vermogen om te zien, als er licht is of als nachtzicht aanstaat. Staat dit uit, dan ziet de pion helemaal niets.",
+        "nightVision": "Nachtzicht",
+        "nightVisionHint": "Laat deze pion zien zonder enig licht, tot de afstand hieronder. Dit is duisterzicht.",
+        "nightVisionRange": "Nachtzichtafstand (vakjes)",
+        "lightHint": "De fakkel die deze pion draagt. Die verlicht de grond eromheen voor iedereen, niet alleen voor deze pion.",
+        "darkHint": "Zonder nachtzicht en zonder eigen licht ziet deze pion alleen waar een geplaatst licht reikt."
       }
     }
   },

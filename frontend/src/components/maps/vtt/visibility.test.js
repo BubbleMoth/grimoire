@@ -4,7 +4,9 @@ import {
   computeVisibility,
   polygonPath,
   rayHit,
-  visibleLights,
+  hasLineOfSight,
+  litRegions,
+  reachingLights,
 } from './visibility'
 
 /** Is `pt` inside the polygon? Ray-casting, used to assert what is visible. */
@@ -171,38 +173,169 @@ describe('computeVisibility', () => {
   })
 })
 
-describe('visibleLights', () => {
+describe('computeVisibility range culling', () => {
+  // Culling walls outside the reach is what makes per-light polygons
+  // affordable, but a wrong cull silently lets light through a wall — the
+  // worst possible failure for this feature. These pin the boundary.
+  it('is still blocked by a long wall whose endpoints are both far away', () => {
+    // Both ends are 50 squares off, but the wall passes one square from the
+    // origin. Culling on endpoint distance would wrongly drop it.
+    const wall = [{ a: { x: -50, y: 1 }, b: { x: 50, y: 1 } }]
+    const poly = computeVisibility({ x: 0, y: 0 }, wall, 5)
+    // Nothing below the wall is reachable from above it.
+    for (const p of poly) expect(p.y).toBeLessThanOrEqual(1.001)
+  })
+
+  it('ignores a wall genuinely beyond the reach', () => {
+    const near = computeVisibility({ x: 0, y: 0 }, [], 5)
+    const far = computeVisibility({ x: 0, y: 0 }, [{ a: { x: 20, y: -5 }, b: { x: 20, y: 5 } }], 5)
+    // A wall 20 squares away cannot change a 5-square polygon.
+    expect(far).toEqual(near)
+  })
+
+  it('matches the unculled result for a wall right at the edge of reach', () => {
+    const wall = [{ a: { x: 5, y: -5 }, b: { x: 5, y: 5 } }]
+    const bounded = computeVisibility({ x: 0, y: 0 }, wall, 6)
+    // The wall is inside 6, so it must still clip the polygon at x=5.
+    expect(Math.max(...bounded.map((p) => p.x))).toBeLessThanOrEqual(5.001)
+  })
+})
+
+describe('reachingLights', () => {
   const light = (x, y, range = 5) => ({ position: { x, y }, range })
 
   it('keeps a light in reach with a clear path', () => {
-    expect(visibleLights({ x: 0, y: 0 }, [light(2, 0)], [])).toHaveLength(1)
+    expect(reachingLights({ x: 0, y: 0 }, [light(2, 0)], [])).toHaveLength(1)
   })
 
   it('drops a light that is out of range', () => {
-    expect(visibleLights({ x: 0, y: 0 }, [light(20, 0)], [])).toHaveLength(0)
+    expect(reachingLights({ x: 0, y: 0 }, [light(20, 0)], [])).toHaveLength(0)
   })
 
   it('drops a light behind a wall', () => {
     const wall = [{ a: { x: 1, y: -5 }, b: { x: 1, y: 5 } }]
     // A lamp in the next room must not brighten this one.
-    expect(visibleLights({ x: 0, y: 0 }, [light(2, 0)], wall)).toHaveLength(0)
+    expect(reachingLights({ x: 0, y: 0 }, [light(2, 0)], wall)).toHaveLength(0)
   })
 
   it('keeps a light whose wall lies beyond it', () => {
     const wall = [{ a: { x: 5, y: -5 }, b: { x: 5, y: 5 } }]
-    expect(visibleLights({ x: 0, y: 0 }, [light(2, 0)], wall)).toHaveLength(1)
+    expect(reachingLights({ x: 0, y: 0 }, [light(2, 0)], wall)).toHaveLength(1)
   })
 
   it('counts a light the token is standing on', () => {
-    expect(visibleLights({ x: 1, y: 1 }, [light(1, 1)], [])).toHaveLength(1)
+    expect(reachingLights({ x: 1, y: 1 }, [light(1, 1)], [])).toHaveLength(1)
   })
 
   it('treats a zero range as unlimited', () => {
-    expect(visibleLights({ x: 0, y: 0 }, [light(50, 0, 0)], [])).toHaveLength(1)
+    expect(reachingLights({ x: 0, y: 0 }, [light(50, 0, 0)], [])).toHaveLength(1)
   })
 
   it('survives no lights at all', () => {
-    expect(visibleLights({ x: 0, y: 0 }, null, [])).toEqual([])
+    expect(reachingLights({ x: 0, y: 0 }, null, [])).toEqual([])
+  })
+})
+
+describe('reachingLights range ownership', () => {
+  // The bug this whole change exists to fix: a torch on a table lights the
+  // room it stands in, so a token across that room is lit by it. The radius
+  // that matters is the light's, and nothing about the token limits it.
+  it('lights a token standing well away from the lamp, inside its radius', () => {
+    const lamp = { position: { x: 0, y: 0 }, range: 8 }
+    // Six squares off — nowhere near standing on it, comfortably inside its 8.
+    expect(reachingLights({ x: 6, y: 0 }, [lamp], [])).toHaveLength(1)
+  })
+
+  it('stops at the edge of the light, not at the token', () => {
+    const lamp = { position: { x: 0, y: 0 }, range: 4 }
+    expect(reachingLights({ x: 3.9, y: 0 }, [lamp], [])).toHaveLength(1)
+    expect(reachingLights({ x: 4.1, y: 0 }, [lamp], [])).toHaveLength(0)
+  })
+
+  it('ignores a malformed light rather than throwing', () => {
+    expect(reachingLights({ x: 0, y: 0 }, [{ range: 5 }, null], [])).toEqual([])
+  })
+})
+
+describe('hasLineOfSight', () => {
+  it('is clear with nothing in the way', () => {
+    expect(hasLineOfSight({ x: 0, y: 0 }, { x: 5, y: 0 }, [])).toBe(true)
+  })
+
+  it('is blocked by a wall between the two points', () => {
+    const wall = [{ a: { x: 2, y: -5 }, b: { x: 2, y: 5 } }]
+    expect(hasLineOfSight({ x: 0, y: 0 }, { x: 5, y: 0 }, wall)).toBe(false)
+  })
+
+  it('is clear when the wall lies beyond the target', () => {
+    const wall = [{ a: { x: 9, y: -5 }, b: { x: 9, y: 5 } }]
+    expect(hasLineOfSight({ x: 0, y: 0 }, { x: 5, y: 0 }, wall)).toBe(true)
+  })
+
+  it('treats coincident points as clear', () => {
+    const wall = [{ a: { x: -5, y: 0 }, b: { x: 5, y: 0 } }]
+    expect(hasLineOfSight({ x: 1, y: 1 }, { x: 1, y: 1 }, wall)).toBe(true)
+  })
+})
+
+describe('litRegions', () => {
+  const token = { x: 0, y: 0 }
+
+  it('reveals nothing when the token has no vision', () => {
+    const lights = [{ position: { x: 1, y: 0 }, range: 5 }]
+    expect(litRegions({ token, lights, segments: [], tokenLight: 4, hasVision: false })).toEqual([])
+  })
+
+  it('reveals nothing without a token', () => {
+    expect(litRegions({ token: null, lights: [], segments: [] })).toEqual([])
+  })
+
+  it('contributes a region for the carried light', () => {
+    const regions = litRegions({ token, lights: [], segments: [], tokenLight: 4 })
+    expect(regions.map((r) => r.kind)).toEqual(['token-light'])
+  })
+
+  it('contributes a night-vision region only when night vision is on', () => {
+    expect(
+      litRegions({ token, lights: [], segments: [], nightVision: 6 }).map((r) => r.kind)
+    ).toEqual(['night'])
+    expect(litRegions({ token, lights: [], segments: [], nightVision: 0 })).toEqual([])
+  })
+
+  it('builds a placed light region around the light, not around the token', () => {
+    // The light sits far from the token; its region must be centred on it, so
+    // the ground it lights is revealed rather than a disc at the token.
+    const lights = [{ position: { x: 10, y: 0 }, range: 3 }]
+    const regions = litRegions({ token, lights, segments: [] })
+    expect(regions).toHaveLength(1)
+    const xs = regions[0].polygon.map((p) => p.x)
+    // Every point of the light's polygon is out near the light.
+    expect(Math.min(...xs)).toBeGreaterThan(6)
+  })
+
+  it('keeps a light whose source is hidden but whose spill is not', () => {
+    // A brazier behind a corner still lights floor the token can see. The
+    // region is emitted regardless of sight to the source; the renderer
+    // intersects it with the token's sight polygon.
+    const wall = [{ a: { x: 5, y: -5 }, b: { x: 5, y: 0.5 } }]
+    const lights = [{ position: { x: 8, y: 0 }, range: 6 }]
+    expect(litRegions({ token, lights, segments: wall })).toHaveLength(1)
+  })
+
+  it('skips a malformed light', () => {
+    expect(litRegions({ token, lights: [null, {}], segments: [] })).toEqual([])
+  })
+
+  it('composes every source at once', () => {
+    const lights = [{ position: { x: 4, y: 0 }, range: 3 }]
+    const regions = litRegions({
+      token,
+      lights,
+      segments: [],
+      nightVision: 5,
+      tokenLight: 2,
+    })
+    expect(regions.map((r) => r.kind)).toEqual(['night', 'token-light', 'light'])
   })
 })
 

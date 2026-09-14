@@ -99,8 +99,10 @@ export default function AboutModal({ about, latestVersion, hasUpdate, onClose })
           width: 560,
           maxWidth: '92vw',
           // Capped so a long changelog scrolls inside the dialog instead of
-          // growing it past the viewport.
-          maxHeight: '86vh',
+          // growing it past the viewport. Both limits apply: 86vh keeps it on
+          // screen on a short one, and the absolute cap stops it stretching to
+          // an awkward full-height slab on a tall one.
+          maxHeight: 'min(840px, 86vh)',
           display: 'flex',
           flexDirection: 'column',
           boxSizing: 'border-box',

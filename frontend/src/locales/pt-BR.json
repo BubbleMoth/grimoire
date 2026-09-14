@@ -653,7 +653,26 @@
         "intensityHint": "{{value}} — cada VTT interpreta isto de forma diferente, a prévia é aproximada.",
         "color": "Cor",
         "opacity": "Opacidade",
-        "shadows": "Projeta sombras"
+        "shadows": "Projeta sombras",
+        "preset": "Predefinição",
+        "presetCustom": "Personalizado",
+        "presets": {
+          "candle": "Vela",
+          "lantern": "Lanterna",
+          "sconce": "Arandela",
+          "hearth": "Lareira",
+          "torch": "Tocha",
+          "brazier": "Braseiro",
+          "campfire": "Fogueira",
+          "bonfire": "Fogueira grande",
+          "daylight": "Luz do dia",
+          "moonlight": "Luar",
+          "swamp": "Brilho do pântano",
+          "arcane": "Arcano",
+          "gloom": "Penumbra",
+          "ambient": "Ambiente",
+          "shade": "Sombra"
+        }
       },
       "environment": {
         "title": "Ambiente",
@@ -733,7 +752,8 @@
           "pan": "Arraste com o botão do meio ou direito para deslocar.",
           "zoom": "Role para dar zoom.",
           "freeSnap": "Segure Alt para colocar um ponto fora da grade."
-        }
+        },
+        "title": "Ferramenta"
       },
       "preview": {
         "title": "Visão do jogador",
@@ -741,10 +761,15 @@
         "hide": "Ocultar visão do jogador",
         "hint": "Escurece tudo o que um token sobre o mapa não conseguiria ver, para você conferir suas paredes sem exportar.",
         "moveHint": "Arraste o token azul ou mova-o com as setas (segure Shift para meio quadro).",
-        "sight": "Visão (quadros)",
-        "light": "Luz do token (quadros)",
-        "rangeHint": "Visão 0 significa ilimitada - só paredes a interrompem. A luz do token é a tocha que ele carrega.",
-        "notExported": "O token e esses alcances servem apenas para a prévia. Não são salvos e nunca chegam ao arquivo .uvtt."
+        "light": "Luz do token (quadrados)",
+        "notExported": "O token e esses alcances servem apenas para a prévia. Não são salvos e nunca chegam ao arquivo .uvtt.",
+        "vision": "Visão",
+        "visionHint": "Dá a capacidade de ver, se houver luz ou se a visão noturna estiver ativada. Desativada, o token não vê nada.",
+        "nightVision": "Visão noturna",
+        "nightVisionHint": "Permite que este token veja sem luz alguma, até a distância abaixo. É a visão no escuro.",
+        "nightVisionRange": "Distância da visão noturna (quadrados)",
+        "lightHint": "A tocha que este token carrega. Ela ilumina o chão ao redor para todos, não só para este token.",
+        "darkHint": "Sem visão noturna e sem luz própria, este token só enxerga onde uma luz colocada alcança."
       }
     }
   },

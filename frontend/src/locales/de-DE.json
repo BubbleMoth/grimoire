@@ -653,7 +653,26 @@
         "intensityHint": "{{value}} – jedes VTT liest diesen Wert anders, die Vorschau ist ungefähr.",
         "color": "Farbe",
         "opacity": "Deckkraft",
-        "shadows": "Wirft Schatten"
+        "shadows": "Wirft Schatten",
+        "preset": "Vorlage",
+        "presetCustom": "Benutzerdefiniert",
+        "presets": {
+          "candle": "Kerze",
+          "lantern": "Laterne",
+          "sconce": "Wandleuchter",
+          "hearth": "Feuerstelle",
+          "torch": "Fackel",
+          "brazier": "Kohlenpfanne",
+          "campfire": "Lagerfeuer",
+          "bonfire": "Freudenfeuer",
+          "daylight": "Tageslicht",
+          "moonlight": "Mondlicht",
+          "swamp": "Sumpfleuchten",
+          "arcane": "Arkan",
+          "gloom": "Düsternis",
+          "ambient": "Umgebung",
+          "shade": "Schatten"
+        }
       },
       "environment": {
         "title": "Umgebung",
@@ -733,7 +752,8 @@
           "pan": "Mit mittlerer oder rechter Maustaste ziehen, um zu verschieben.",
           "zoom": "Scrollen zum Zoomen.",
           "freeSnap": "Alt halten, um einen Punkt außerhalb des Rasters zu setzen."
-        }
+        },
+        "title": "Werkzeug"
       },
       "preview": {
         "title": "Spieleransicht",
@@ -741,10 +761,15 @@
         "hide": "Spieleransicht ausblenden",
         "hint": "Verdunkelt alles, was eine Spielfigur auf der Karte nicht sehen könnte – so prüfst du deine Wände ohne Export.",
         "moveHint": "Ziehe die blaue Figur oder bewege sie mit den Pfeiltasten (Umschalt für einen halben Schritt).",
-        "sight": "Sicht (Felder)",
-        "light": "Figurenlicht (Felder)",
-        "rangeHint": "Sicht 0 bedeutet unbegrenzt – nur Wände halten sie auf. Figurenlicht ist die Fackel, die die Figur trägt.",
-        "notExported": "Die Figur und diese Reichweiten dienen nur der Vorschau. Sie werden nicht gespeichert und landen nie in der .uvtt-Datei."
+        "light": "Licht des Spielsteins (Felder)",
+        "notExported": "Die Figur und diese Reichweiten dienen nur der Vorschau. Sie werden nicht gespeichert und landen nie in der .uvtt-Datei.",
+        "vision": "Sicht",
+        "visionHint": "Ermöglicht das Sehen, wenn Licht vorhanden oder Nachtsicht aktiviert ist. Ist dies aus, sieht der Spielstein gar nichts.",
+        "nightVision": "Nachtsicht",
+        "nightVisionHint": "Lässt diesen Spielstein ohne jedes Licht sehen, bis zur unten angegebenen Entfernung. Das ist Dunkelsicht.",
+        "nightVisionRange": "Nachtsichtweite (Felder)",
+        "lightHint": "Die Fackel, die dieser Spielstein trägt. Sie erhellt den Boden ringsum für alle, nicht nur für diesen Spielstein.",
+        "darkHint": "Ohne Nachtsicht und ohne eigenes Licht sieht dieser Spielstein nur dort, wohin ein platziertes Licht reicht."
       }
     }
   },

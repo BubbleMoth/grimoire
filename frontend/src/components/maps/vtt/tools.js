@@ -63,16 +63,30 @@ export const DEFAULT_LIGHT = {
 }
 
 /**
- * The default sight and light radii for the player-view preview, in grid
- * squares. Preview-only: a `.uvtt` has no concept of a player token, so none of
- * this is written to the file.
+ * The player-view preview's token settings, in grid squares.
  *
- * 4 squares of light is a torch at the 5ft-per-square most systems assume,
- * which is the case a GM is usually checking. Sight defaults to unlimited —
- * walls are what should stop you seeing, not an arbitrary radius.
+ * Preview-only: a `.uvtt` has no concept of a player token, so none of this is
+ * written to the file.
+ *
+ * The shape mirrors how virtual tabletops actually model a token's sight,
+ * because "sight radius in squares" turned out to answer the wrong question. A
+ * VTT asks three things, and they are independent:
+ *
+ * - `vision` — is this token a viewpoint at all? Off means it reveals nothing,
+ *   which is what an object or NPC token is set to.
+ * - `nightVision` / `nightVisionRange` — can it see *without* light, and how
+ *   far? This is darkvision. Off, the token sees only where there is light.
+ * - `lightRange` — the torch the token carries, which lights ground for
+ *   everyone rather than only for this token.
+ *
+ * Defaults describe the common case: a human with a torch. Night vision off,
+ * because most player characters do not have darkvision and starting with it
+ * on would make every map look uniformly explorable.
  */
 export const DEFAULT_PREVIEW = {
-  sightRange: 0,
+  vision: true,
+  nightVision: false,
+  nightVisionRange: 12,
   lightRange: 4,
 }
 

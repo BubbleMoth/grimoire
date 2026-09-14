@@ -10,7 +10,8 @@ import VttCanvas from './VttCanvas'
 import VttToolbar from './VttToolbar'
 import VttSidebar from './VttSidebar'
 import useVttDocument from './useVttDocument'
-import { distance, distanceToPolyline, gridDimensions, round4 } from './geometry'
+import { gridDimensions, round4 } from './geometry'
+import { hitTest } from './hitTest'
 import {
   DEFAULT_LIGHT,
   DEFAULT_PREVIEW,
@@ -236,30 +237,18 @@ export default function VttEditorView() {
     })
   }, [tool, update])
 
-  /** Hit-test every feature and select the nearest within a tolerance. */
+  /**
+   * Select whatever the click landed on.
+   *
+   * The current zoom is handed to the hit test so its tolerance stays a fixed
+   * size on screen: zooming in genuinely separates features that overlap at
+   * 100%, which is what makes zooming a usable answer to a crowded map.
+   */
   const selectAt = useCallback(
     (pt) => {
-      // Tolerance in grid units: a third of a cell is close enough to feel
-      // forgiving without letting two adjacent walls fight over a click.
-      const tol = 0.34
-      let best = null
-      for (const key of ['line_of_sight', 'objects_line_of_sight']) {
-        docRef.current[key].forEach((line, index) => {
-          const d = distanceToPolyline(pt, line)
-          if (d < tol && (!best || d < best.d)) best = { key, index, d }
-        })
-      }
-      docRef.current.portals.forEach((portal, index) => {
-        const d = distanceToPolyline(pt, portal.bounds)
-        if (d < tol && (!best || d < best.d)) best = { key: 'portals', index, d }
-      })
-      docRef.current.lights.forEach((light, index) => {
-        const d = distance(pt, light.position)
-        if (d < tol * 1.5 && (!best || d < best.d)) best = { key: 'lights', index, d }
-      })
-      setSelection(best ? { key: best.key, index: best.index } : null)
+      setSelection(hitTest(docRef.current, pt, { cellPx, scale: viewportRef.current?.view.scale }))
     },
-    [docRef]
+    [docRef, cellPx]
   )
 
   const handleClick = useCallback(

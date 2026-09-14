@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { gridToImage, imageToGrid, round4, snapToGrid, snapToHalf } from './geometry'
-import { collectSegments, computeVisibility, polygonPath, visibleLights } from './visibility'
-import { argbToCss } from './color'
+import { collectSegments, computeVisibility, litRegions, polygonPath } from './visibility'
+import { argbToAlpha, argbToCss } from './color'
 import { LAYER_STYLE, POLYLINE_TOOLS, PORTAL_TOOLS, TOOL_LIGHT, TOOL_SELECT } from './tools'
 import useViewport from './useViewport'
 import { gridOverlayStyle } from './gridOverlay'
+import { LIGHT_MARKER_PX } from './hitTest'
 
 /**
  * The drawing surface: the map image, the grid overlay, and every authored
@@ -98,7 +99,16 @@ export default function VttCanvas({
       startPan(e.clientX, e.clientY)
       return
     }
-    onCanvasClick?.(toGridPoint(e.clientX, e.clientY, e.altKey), e)
+    // Selecting deliberately ignores the snap. Snapping exists so a *drawn*
+    // point lands on a grid line, but it rounds a click to the nearest
+    // intersection — which throws away exactly the precision a selection
+    // needs. With grid snap on, every click inside a cell collapsed to the
+    // same corner, so two walls a tenth of a cell apart, or a light beside a
+    // wall, resolved to one identical point and only ever selected whichever
+    // feature was nearest *that corner*. No amount of zooming could separate
+    // them, because the coordinate reaching the hit test never changed.
+    const free = tool === TOOL_SELECT || e.altKey
+    onCanvasClick?.(toGridPoint(e.clientX, e.clientY, free), e)
   }
 
   const handleMove = (e) => {
@@ -128,14 +138,51 @@ export default function VttCanvas({
   // a render. Everything here is in grid units until it reaches `toPx`.
   const previewOn = !!preview?.enabled
   const segments = useMemo(() => (previewOn ? collectSegments(doc) : []), [previewOn, doc])
+  const hasVision = preview?.vision !== false
+
+  // What the token could see if everywhere were lit — bounded only by walls.
+  // Sight itself is no longer capped by a radius: eyes are not limited to a
+  // number of squares, light and walls are what limit them. The radius that
+  // used to live here is now night vision, which is the thing that genuinely
+  // has a distance.
   const sightPolygon = useMemo(() => {
-    if (!previewOn || !preview.token) return null
-    return computeVisibility(preview.token, segments, preview.sightRange)
-  }, [previewOn, preview?.token, preview?.sightRange, segments])
-  const litLights = useMemo(() => {
+    if (!previewOn || !preview.token || !hasVision) return null
+    return computeVisibility(preview.token, segments, 0)
+  }, [previewOn, preview?.token, hasVision, segments])
+
+  // The regions that are actually lit (or seen by darkvision). Each is
+  // clipped to `sightPolygon` when drawn, so nothing shows through a wall.
+  const regions = useMemo(() => {
     if (!previewOn || !preview.token) return []
-    return visibleLights(preview.token, doc.lights, segments)
-  }, [previewOn, preview?.token, doc.lights, segments])
+    return litRegions({
+      token: preview.token,
+      lights: doc.lights,
+      segments,
+      nightVision: preview.nightVision ? preview.nightVisionRange : 0,
+      tokenLight: preview.lightRange,
+      hasVision,
+    })
+  }, [
+    previewOn,
+    preview?.token,
+    preview?.nightVision,
+    preview?.nightVisionRange,
+    preview?.lightRange,
+    hasVision,
+    doc.lights,
+    segments,
+  ])
+
+  // Ambient light decides how dark "unlit" is. A map authored with moonlight
+  // ambient should not preview as pitch black, and one authored pitch black
+  // should not preview as readable — the setting exists precisely to make
+  // that choice, so the preview has to honour it or it is previewing a
+  // different map than the one being exported.
+  const ambientAlpha = argbToAlpha(doc.environment?.ambient_light ?? '00000000')
+  // Ambient never fully erases the shroud: at strength 1 the preview would be
+  // indistinguishable from the preview being off, and the GM would think it
+  // had broken. It floors at a visible dimming instead.
+  const shroudAlpha = Math.max(0.25, 0.88 * (1 - ambientAlpha))
   // Dimmer than the calibration overlay: here the grid is a reference while
   // drawing, not the thing being judged.
   const gridStyle = gridOverlayStyle(cellPx, offset, view.scale, 0.35)
@@ -199,60 +246,98 @@ export default function VttCanvas({
           style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
         >
           {/* The player view, drawn under everything else so the authored
-              geometry stays legible on top of it. */}
-          {previewOn && sightPolygon && (
+              geometry stays legible on top of it.
+
+              The shroud is punched through by the *union* of everything that
+              reveals ground — night vision, the carried torch, and the area
+              each placed light falls on — with the whole union clipped to the
+              token's line of sight. Composing it this way is what makes a lit
+              room across the map visible from the doorway, instead of the map
+              staying dark until the token stands in the light. */}
+          {previewOn && (
             <>
               <defs>
+                {/* The token's line of sight, used to clip every reveal and
+                    every glow below. SVG masks have no intersection operator,
+                    so applying this to the group that draws the union of lit
+                    regions is how the two are combined. */}
+                <mask id="vtt-preview-sight">
+                  {sightPolygon && <path d={polygonPath(sightPolygon.map(toPx))} fill="#ffffff" />}
+                </mask>
+                {/* The darkness, with everything lit-and-visible cut out of
+                    it: white stays dark, black punches a hole. */}
                 <mask id="vtt-visible-mask">
-                  {/* White shows the darkness, black punches the visible area
-                      out of it — so the room the token is in stays bright and
-                      everything beyond a wall is covered. */}
                   <rect x="0" y="0" width={pixelWidth} height={pixelHeight} fill="#ffffff" />
-                  <path d={polygonPath(sightPolygon.map(toPx))} fill="#000000" />
+                  <g mask="url(#vtt-preview-sight)">
+                    {regions.map((region, i) => (
+                      <path
+                        key={`reveal-${i}`}
+                        data-testid="preview-reveal"
+                        data-kind={region.kind}
+                        d={polygonPath(region.polygon.map(toPx))}
+                        fill="#000000"
+                      />
+                    ))}
+                  </g>
                 </mask>
               </defs>
+
               <rect
                 data-testid="preview-shroud"
                 x="0"
                 y="0"
                 width={pixelWidth}
                 height={pixelHeight}
-                // Not fully opaque: a GM still needs to see the map they are
-                // working on underneath, and a real VTT shows explored-but-
-                // unseen area dimmed rather than erased.
-                fill="rgba(0, 0, 0, 0.82)"
+                // Darkness is driven by the authored ambient light rather than
+                // fixed, so the preview shows the map that will actually be
+                // exported. Never fully opaque: the GM is still working on the
+                // artwork underneath.
+                fill={`rgba(0, 0, 0, ${shroudAlpha})`}
                 mask="url(#vtt-visible-mask)"
               />
 
-              {/* The token's own light, and each placed light that actually
-                  reaches it — both clipped to what is visible, so a lamp around
-                  a corner does not glow through the wall hiding it. */}
-              <g mask="url(#vtt-preview-lit)">
-                {preview.lightRange > 0 && (
-                  <circle
-                    data-testid="preview-token-light"
-                    cx={toPx(preview.token).x}
-                    cy={toPx(preview.token).y}
-                    r={preview.lightRange * cellPx}
-                    fill="rgba(255, 226, 170, 0.16)"
-                  />
-                )}
-                {litLights.map((light, i) => (
-                  <circle
-                    key={`lit-${i}`}
-                    data-testid="preview-lit-light"
-                    cx={toPx(light.position).x}
-                    cy={toPx(light.position).y}
-                    r={Math.max(1, light.range * cellPx)}
-                    fill={argbToCss(light.color, 0.18 * Math.min(1, light.intensity || 1))}
+              {/* The warm tint each light casts, over the ground it reaches.
+                  Drawn per light rather than as one wash so two lights of
+                  different colours read as two lights, and clipped to sight so
+                  a lamp around a corner does not glow through the wall. */}
+              <g mask="url(#vtt-preview-sight)">
+                {regions.map((region, i) => {
+                  if (region.kind === 'night') return null
+                  const fill =
+                    region.kind === 'token-light'
+                      ? 'rgba(255, 226, 170, 0.16)'
+                      : argbToCss(
+                          region.light.color,
+                          0.18 * Math.min(1, region.light.intensity || 1)
+                        )
+                  return (
+                    <path
+                      key={`glow-${i}`}
+                      data-testid={
+                        region.kind === 'token-light' ? 'preview-token-light' : 'preview-lit-light'
+                      }
+                      d={polygonPath(region.polygon.map(toPx))}
+                      fill={fill}
+                    />
+                  )
+                })}
+              </g>
+
+              {/* Night vision reads as a cool wash, the way VTTs tint
+                  darkvision, so a GM can tell at a glance which ground is
+                  genuinely lit and which is only visible because this token
+                  happens to see in the dark. */}
+              {regions
+                .filter((r) => r.kind === 'night')
+                .map((region, i) => (
+                  <path
+                    key={`night-${i}`}
+                    data-testid="preview-night-vision"
+                    d={polygonPath(region.polygon.map(toPx))}
+                    fill="rgba(120, 170, 200, 0.10)"
+                    mask="url(#vtt-preview-sight)"
                   />
                 ))}
-              </g>
-              <defs>
-                <mask id="vtt-preview-lit">
-                  <path d={polygonPath(sightPolygon.map(toPx))} fill="#ffffff" />
-                </mask>
-              </defs>
             </>
           )}
 
@@ -279,7 +364,10 @@ export default function VttCanvas({
                   <circle
                     cx={c.x}
                     cy={c.y}
-                    r={Math.max(3, 7 / view.scale)}
+                    // Drawn from the same constant the hit test uses, so the
+                    // dot you can see and the dot you can click are the same
+                    // circle at every zoom level.
+                    r={LIGHT_MARKER_PX / view.scale}
                     fill={argbToCss(light.color, 1)}
                     stroke={isSelected('lights', i) ? '#ffffff' : 'rgba(0,0,0,0.6)'}
                     strokeWidth={(isSelected('lights', i) ? 3 : 1.5) / view.scale}

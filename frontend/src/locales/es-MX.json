@@ -653,7 +653,26 @@
         "intensityHint": "{{value}}: cada VTT lo interpreta de forma distinta, la vista previa es aproximada.",
         "color": "Color",
         "opacity": "Opacidad",
-        "shadows": "Proyecta sombras"
+        "shadows": "Proyecta sombras",
+        "preset": "Preajuste",
+        "presetCustom": "Personalizado",
+        "presets": {
+          "candle": "Vela",
+          "lantern": "Farol",
+          "sconce": "Aplique de pared",
+          "hearth": "Hogar",
+          "torch": "Antorcha",
+          "brazier": "Brasero",
+          "campfire": "Fogata",
+          "bonfire": "Hoguera",
+          "daylight": "Luz del día",
+          "moonlight": "Luz de luna",
+          "swamp": "Brillo de pantano",
+          "arcane": "Arcano",
+          "gloom": "Penumbra",
+          "ambient": "Ambiente",
+          "shade": "Sombra"
+        }
       },
       "environment": {
         "title": "Entorno",
@@ -733,7 +752,8 @@
           "pan": "Arrastra con el botón central o derecho para desplazarte.",
           "zoom": "Usa la rueda para acercar o alejar.",
           "freeSnap": "Mantén Alt para colocar un punto fuera de la cuadrícula."
-        }
+        },
+        "title": "Herramienta"
       },
       "preview": {
         "title": "Vista del jugador",
@@ -741,10 +761,15 @@
         "hide": "Ocultar vista del jugador",
         "hint": "Oscurece todo lo que una ficha situada en el mapa no podría ver, para comprobar tus muros sin exportar.",
         "moveHint": "Arrastra la ficha azul o muévela con las flechas (mantén Mayús para medio cuadro).",
-        "sight": "Visión (cuadros)",
-        "light": "Luz de la ficha (cuadros)",
-        "rangeHint": "Visión 0 significa ilimitada: solo los muros la detienen. La luz de la ficha es la antorcha que lleva.",
-        "notExported": "La ficha y estos alcances son solo para la vista previa. No se guardan y nunca llegan al archivo .uvtt."
+        "light": "Luz de la ficha (casillas)",
+        "notExported": "La ficha y estos alcances son solo para la vista previa. No se guardan y nunca llegan al archivo .uvtt.",
+        "vision": "Visión",
+        "visionHint": "Otorga la capacidad de ver, si hay luz o si la visión nocturna está activada. Desactivada, la ficha no ve nada.",
+        "nightVision": "Visión nocturna",
+        "nightVisionHint": "Permite a esta ficha ver sin luz alguna, hasta la distancia indicada abajo. Es la visión en la oscuridad.",
+        "nightVisionRange": "Distancia de visión nocturna (casillas)",
+        "lightHint": "La antorcha que lleva esta ficha. Ilumina el suelo a su alrededor para todos, no solo para esta ficha.",
+        "darkHint": "Sin visión nocturna ni luz propia, esta ficha solo ve donde alcanza una luz colocada."
       }
     }
   },

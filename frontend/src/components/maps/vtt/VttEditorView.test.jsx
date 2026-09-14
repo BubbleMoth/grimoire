@@ -53,11 +53,27 @@ beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, 'clientHeight', { value: 1000, configurable: true })
 })
 
+/**
+ * Open a collapsed sidebar section by clicking its header.
+ *
+ * The sidebar folds its reference sections away by default so the panel opens
+ * on the selection; a test that reads inside one opens it first, exactly as a
+ * user would.
+ */
+const expandSection = async (title) => {
+  const header = screen.getByRole('button', { name: new RegExp(title) })
+  if (header.getAttribute('aria-expanded') === 'false') await userEvent.click(header)
+}
+
 const enterEditPhase = async () => {
   renderEditor()
   await screen.findByTestId('calibrator-canvas')
   await userEvent.click(screen.getByRole('button', { name: /calibrate.confirm/ }))
-  return screen.findByTestId('vtt-canvas')
+  const canvas = await screen.findByTestId('vtt-canvas')
+  // Layer counts are how most of these tests observe that geometry landed, and
+  // the section holding them starts collapsed.
+  await expandSection('maps.vtt.layers.title')
+  return canvas
 }
 
 describe('VttEditorView', () => {
@@ -267,6 +283,7 @@ describe('VttEditorView', () => {
     fireEvent.mouseDown(canvas, { button: 0, clientX: 400, clientY: 400 })
     fireEvent.mouseDown(canvas, { button: 0, clientX: 600, clientY: 400 })
     fireEvent.doubleClick(canvas, { clientX: 600, clientY: 400 })
+    await expandSection('maps.vtt.grid.title')
     await userEvent.click(screen.getByRole('button', { name: /grid.recalibrate/ }))
     expect(confirm).toHaveBeenCalled()
     expect(screen.getByTestId('vtt-canvas')).toBeInTheDocument()
@@ -279,6 +296,7 @@ describe('VttEditorView', () => {
     fireEvent.mouseDown(canvas, { button: 0, clientX: 400, clientY: 400 })
     fireEvent.mouseDown(canvas, { button: 0, clientX: 600, clientY: 400 })
     fireEvent.doubleClick(canvas, { clientX: 600, clientY: 400 })
+    await expandSection('maps.vtt.grid.title')
     await userEvent.click(screen.getByRole('button', { name: /grid.recalibrate/ }))
     expect(await screen.findByTestId('calibrator-canvas')).toBeInTheDocument()
     confirm.mockRestore()
@@ -287,6 +305,7 @@ describe('VttEditorView', () => {
   it('recalibrates without a prompt when nothing has been drawn', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     await enterEditPhase()
+    await expandSection('maps.vtt.grid.title')
     await userEvent.click(screen.getByRole('button', { name: /grid.recalibrate/ }))
     expect(confirm).not.toHaveBeenCalled()
     expect(await screen.findByTestId('calibrator-canvas')).toBeInTheDocument()
@@ -376,6 +395,7 @@ describe('VttEditorView', () => {
     renderEditor()
     await screen.findByTestId('vtt-canvas')
     expect(screen.getByTestId('wall-path')).toHaveAttribute('d', 'M0 0 L280 0')
+    await expandSection('maps.vtt.grid.title')
     await userEvent.click(screen.getByRole('button', { name: /grid.recalibrate/ }))
     await screen.findByTestId('calibrator-canvas')
     fireEvent.change(screen.getByRole('spinbutton', { name: 'maps.vtt.calibrate.cellPx' }), {
@@ -396,8 +416,56 @@ describe('VttEditorView', () => {
     expect(screen.getByTestId('count-lights')).toHaveTextContent('1')
   })
 
+  it('opens the new light for editing the moment it is dropped', async () => {
+    // Placing a light selects it, and the selection section is at the top of
+    // the sidebar and open — so the preset picker and range are right there
+    // without a second click anywhere.
+    const canvas = await enterEditPhase()
+    await userEvent.click(screen.getByLabelText('maps.vtt.tools.light'))
+    fireEvent.mouseDown(canvas, { clientX: 300, clientY: 300, button: 0 })
+    expect(screen.getByLabelText('maps.vtt.light.preset')).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'maps.vtt.light.range' })).toBeInTheDocument()
+  })
+
+  it('applies a light preset to the light just placed', async () => {
+    const canvas = await enterEditPhase()
+    await userEvent.click(screen.getByLabelText('maps.vtt.tools.light'))
+    fireEvent.mouseDown(canvas, { clientX: 300, clientY: 300, button: 0 })
+    await userEvent.click(screen.getByTestId('light-preset-brazier'))
+    // The preset's range reaches the document, not just the picker.
+    expect(screen.getByRole('spinbutton', { name: 'maps.vtt.light.range' })).toHaveValue(7)
+  })
+
+  it('selects the light rather than the wall it sits on', async () => {
+    // The reported bug: a light drawn over a wall could not be clicked — the
+    // wall was nearer in raw distance and won, so clicking the light's own
+    // circle selected (and deleted) the wall behind it.
+    const canvas = await enterEditPhase()
+    // A wall running through (500,500), the point the light will sit on.
+    await userEvent.click(screen.getByLabelText('maps.vtt.tools.wall'))
+    fireEvent.mouseDown(canvas, { clientX: 300, clientY: 500, button: 0 })
+    fireEvent.mouseDown(canvas, { clientX: 700, clientY: 500, button: 0 })
+    fireEvent.doubleClick(canvas, { clientX: 700, clientY: 500 })
+
+    // Drop a light on that wall, at an exact grid intersection so snapping
+    // leaves it precisely where it was clicked.
+    await userEvent.click(screen.getByLabelText('maps.vtt.tools.light'))
+    fireEvent.mouseDown(canvas, { clientX: 500, clientY: 500, button: 0 })
+
+    // Now click that intersection with the select tool: the light must win.
+    // Selecting does not snap, so the click must land on the marker where it
+    // is actually drawn — which, since placing snapped it, is the nearest
+    // intersection rather than the pixel originally clicked. Re-using the
+    // placement click is exactly right: it snaps to the same intersection the
+    // light was placed on, so it lands on the marker.
+    await userEvent.click(screen.getByLabelText('maps.vtt.tools.select'))
+    fireEvent.mouseDown(canvas, { clientX: 500, clientY: 500, button: 0 })
+    expect(screen.getByLabelText('maps.vtt.light.preset')).toBeInTheDocument()
+  })
+
   it('edits the environment for the whole map', async () => {
     await enterEditPhase()
+    await expandSection('maps.vtt.environment.title')
     await userEvent.click(screen.getByRole('checkbox'))
     expect(screen.getByText('maps.vtt.unsaved')).toBeInTheDocument()
   })
@@ -463,6 +531,7 @@ describe('VttEditorView free placement', () => {
 describe('VttEditorView player preview', () => {
   const enablePreview = async () => {
     const canvas = await enterEditPhase()
+    await expandSection('maps.vtt.preview.title')
     await userEvent.click(screen.getByRole('button', { name: /preview.show/ }))
     return canvas
   }

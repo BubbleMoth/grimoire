@@ -194,3 +194,126 @@ describe('VttCanvas', () => {
     expect(typeof viewportRef.current.zoomBy).toBe('function')
   })
 })
+
+describe('VttCanvas selection precision', () => {
+  it('does not snap the click used for selecting', async () => {
+    // The root cause of "features too close together cannot be picked apart":
+    // with grid snap on, every click inside a cell was rounded to the nearest
+    // intersection before hit-testing, so two features a fraction of a cell
+    // apart collapsed to one identical point. Zooming could never separate
+    // them, because the coordinate reaching the hit test never changed.
+    const onCanvasClick = vi.fn()
+    render(<VttCanvas {...props} tool="select" snap="grid" onCanvasClick={onCanvasClick} />)
+    fireEvent.mouseDown(screen.getByTestId('vtt-canvas'), {
+      button: 0,
+      clientX: 310,
+      clientY: 250,
+    })
+    const pt = onCanvasClick.mock.calls[0][0]
+    // A snapped point would be whole numbers; the real position is not.
+    expect(Number.isInteger(pt.x) && Number.isInteger(pt.y)).toBe(false)
+  })
+
+  it('still snaps the click used for drawing', () => {
+    // Snapping is right for placing geometry — a wall belongs on a grid line.
+    const onCanvasClick = vi.fn()
+    render(<VttCanvas {...props} tool="wall" snap="grid" onCanvasClick={onCanvasClick} />)
+    fireEvent.mouseDown(screen.getByTestId('vtt-canvas'), {
+      button: 0,
+      clientX: 310,
+      clientY: 250,
+    })
+    const pt = onCanvasClick.mock.calls[0][0]
+    expect(Number.isInteger(pt.x) && Number.isInteger(pt.y)).toBe(true)
+  })
+})
+
+describe('VttCanvas player view', () => {
+  const preview = (over = {}) => ({
+    enabled: true,
+    token: { x: 2, y: 6 },
+    vision: true,
+    nightVision: false,
+    nightVisionRange: 12,
+    lightRange: 4,
+    ...over,
+  })
+
+  it('draws no shroud while the preview is off', () => {
+    render(<VttCanvas {...props} preview={{ enabled: false }} />)
+    expect(screen.queryByTestId('preview-shroud')).toBeNull()
+  })
+
+  it('draws the shroud and hides the authoring light circles once on', () => {
+    render(<VttCanvas {...props} preview={preview()} />)
+    expect(screen.getByTestId('preview-shroud')).toBeInTheDocument()
+    // The authoring circles would contradict the computed lighting.
+    expect(screen.queryAllByTestId('light-marker')).toHaveLength(0)
+  })
+
+  it('reveals the ground a distant placed light falls on', () => {
+    // The whole point of the change: the lamp is four squares from the token,
+    // well outside anything the token carries, and it still lights the map.
+    render(<VttCanvas {...props} preview={preview({ lightRange: 0 })} />)
+    const kinds = screen.getAllByTestId('preview-reveal').map((el) => el.getAttribute('data-kind'))
+    expect(kinds).toContain('light')
+  })
+
+  it('reveals nothing at all when the token has vision switched off', () => {
+    render(<VttCanvas {...props} preview={preview({ vision: false })} />)
+    // Still shrouded, but with no reveal punched through it.
+    expect(screen.getByTestId('preview-shroud')).toBeInTheDocument()
+    expect(screen.queryAllByTestId('preview-reveal')).toHaveLength(0)
+  })
+
+  it('adds a night vision region only when night vision is on', () => {
+    const { rerender } = render(<VttCanvas {...props} preview={preview()} />)
+    expect(screen.queryByTestId('preview-night-vision')).toBeNull()
+    rerender(<VttCanvas {...props} preview={preview({ nightVision: true })} />)
+    expect(screen.getByTestId('preview-night-vision')).toBeInTheDocument()
+  })
+
+  it('draws the carried torch when the token has one', () => {
+    render(<VttCanvas {...props} preview={preview({ lightRange: 4 })} />)
+    expect(screen.getByTestId('preview-token-light')).toBeInTheDocument()
+  })
+
+  it('points every mask reference at a mask that exists', () => {
+    // A dangling mask="url(#...)" does not error in SVG — it renders the
+    // element completely unmasked, which here means light spilling straight
+    // through walls. Exactly the bug this preview exists to catch, and
+    // invisible in any test that only counts elements.
+    const { container } = render(<VttCanvas {...props} preview={preview({ nightVision: true })} />)
+    const defined = new Set([...container.querySelectorAll('mask[id]')].map((m) => m.id))
+    const referenced = [...container.querySelectorAll('*')]
+      .map((el) => el.getAttribute?.('mask'))
+      .filter((v) => v && v.startsWith('url(#'))
+      .map((v) => v.slice(5, -1))
+    expect(referenced.length).toBeGreaterThan(0)
+    for (const id of referenced) expect(defined).toContain(id)
+  })
+
+  it('lightens the shroud as authored ambient light rises', () => {
+    const alphaOf = (el) => Number(el.getAttribute('fill').match(/([\d.]+)\)$/)[1])
+
+    const dark = { ...doc, environment: { ...doc.environment, ambient_light: '00000000' } }
+    const { rerender } = render(<VttCanvas {...props} doc={dark} preview={preview()} />)
+    const darkAlpha = alphaOf(screen.getByTestId('preview-shroud'))
+
+    // Half-strength moonlight ambient: unlit ground must read lighter than in
+    // a pitch-black dungeon, because that is the choice the setting exists to
+    // make and the preview has to show the map that will be exported.
+    const lit = { ...doc, environment: { ...doc.environment, ambient_light: '80334466' } }
+    rerender(<VttCanvas {...props} doc={lit} preview={preview()} />)
+    expect(alphaOf(screen.getByTestId('preview-shroud'))).toBeLessThan(darkAlpha)
+  })
+
+  it('never lets ambient light erase the shroud entirely', () => {
+    // At full strength the preview would otherwise be indistinguishable from
+    // the preview being off, and would read as broken.
+    const bright = { ...doc, environment: { ...doc.environment, ambient_light: 'ffffffff' } }
+    render(<VttCanvas {...props} doc={bright} preview={preview()} />)
+    const fill = screen.getByTestId('preview-shroud').getAttribute('fill')
+    expect(Number(fill.match(/([\d.]+)\)$/)[1])).toBeGreaterThan(0.2)
+  })
+})

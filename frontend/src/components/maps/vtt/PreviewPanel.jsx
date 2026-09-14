@@ -2,7 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { LuEye, LuEyeOff } from 'react-icons/lu'
 
 import Field from './Field'
-import { btnStyle, inputStyle, sectionTitleStyle } from './ui'
+import Toggle from './Toggle'
+import { DEFAULT_PREVIEW } from './tools'
+import { btnStyle, inputStyle } from './ui'
 
 /**
  * The player-view preview: what someone standing on the map would actually see.
@@ -17,22 +19,27 @@ import { btnStyle, inputStyle, sectionTitleStyle } from './ui'
  * them.
  *
  * **None of this is written to the `.uvtt`.** The format has no concept of a
- * player token or a viewing position, so the token, its sight radius and its
- * light are editor state only. The panel says so, because the natural
- * assumption is the opposite.
+ * player token or a viewing position, so the token and its vision settings are
+ * editor state only. The panel says so, because the natural assumption is the
+ * opposite.
+ *
+ * The controls mirror how a virtual tabletop models sight — vision, night
+ * vision, and a carried light — rather than the single "sight radius" this
+ * started with. That radius implied eyes have a square count, which no VTT
+ * believes and which made the preview answer a question nobody was asking:
+ * what stops you seeing is walls and darkness, and darkvision is the only one
+ * of the three that genuinely has a distance.
  */
 export default function PreviewPanel({ preview, onChange }) {
   const { t } = useTranslation()
   // Defaulted rather than required: the panel is one optional part of a large
   // sidebar, and a caller that has no preview state yet should get the control
   // in its off position rather than a crash.
-  const state = preview || { enabled: false, sightRange: 0, lightRange: 0 }
+  const state = preview || { enabled: false, ...DEFAULT_PREVIEW }
   const set = (patch) => onChange?.({ ...state, ...patch })
-
+  const visionOn = state.vision !== false
   return (
     <div data-testid="preview-panel">
-      <div style={sectionTitleStyle}>{t('maps.vtt.preview.title')}</div>
-
       <button
         type="button"
         onClick={() => set({ enabled: !state.enabled })}
@@ -65,33 +72,75 @@ export default function PreviewPanel({ preview, onChange }) {
             {t('maps.vtt.preview.moveHint')}
           </div>
 
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            <Field label={t('maps.vtt.preview.sight')} style={{ flex: 1, minWidth: 0 }}>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={state.sightRange}
-                aria-label={t('maps.vtt.preview.sight')}
-                onChange={(e) => set({ sightRange: Math.max(0, Number(e.target.value) || 0) })}
-                style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+          {/* Vision is the master switch, exactly as a VTT presents it: a token
+              with it off is not a viewpoint and reveals nothing. Everything
+              below depends on it, so it leads. */}
+          <Toggle
+            label={t('maps.vtt.preview.vision')}
+            hint={t('maps.vtt.preview.visionHint')}
+            checked={visionOn}
+            onChange={(v) => set({ vision: v })}
+          />
+
+          {visionOn && (
+            <>
+              <Toggle
+                label={t('maps.vtt.preview.nightVision')}
+                hint={t('maps.vtt.preview.nightVisionHint')}
+                checked={!!state.nightVision}
+                onChange={(v) => set({ nightVision: v })}
               />
-            </Field>
-            <Field label={t('maps.vtt.preview.light')} style={{ flex: 1, minWidth: 0 }}>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={state.lightRange}
-                aria-label={t('maps.vtt.preview.light')}
-                onChange={(e) => set({ lightRange: Math.max(0, Number(e.target.value) || 0) })}
-                style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
-              />
-            </Field>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
-            {t('maps.vtt.preview.rangeHint')}
-          </div>
+
+              {state.nightVision && (
+                <Field label={t('maps.vtt.preview.nightVisionRange')} style={{ marginTop: 10 }}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={state.nightVisionRange}
+                    aria-label={t('maps.vtt.preview.nightVisionRange')}
+                    onChange={(e) =>
+                      set({ nightVisionRange: Math.max(0, Number(e.target.value) || 0) })
+                    }
+                    style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+                  />
+                </Field>
+              )}
+
+              <Field label={t('maps.vtt.preview.light')} style={{ marginTop: 10 }}>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={state.lightRange}
+                  aria-label={t('maps.vtt.preview.light')}
+                  onChange={(e) => set({ lightRange: Math.max(0, Number(e.target.value) || 0) })}
+                  style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+                />
+              </Field>
+              <div
+                style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}
+              >
+                {t('maps.vtt.preview.lightHint')}
+              </div>
+
+              {/* The case that looks like a bug but is not: no darkvision, no
+                  torch and no placed light in reach means the token genuinely
+                  sees nothing. Saying so beats a black screen. */}
+              {!state.nightVision && state.lightRange <= 0 && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--text-muted)',
+                    marginTop: 10,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {t('maps.vtt.preview.darkHint')}
+                </div>
+              )}
+            </>
+          )}
 
           {/* The reason this panel exists at all is that nothing here reaches
               the file. Saying so prevents a GM tuning a torch radius here and
