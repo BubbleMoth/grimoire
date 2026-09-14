@@ -2504,6 +2504,12 @@
   },
   "addons": {
     "byAuthor": "por {{author}}",
+    "verifiedSource": "Fonte verificada",
+    "contentPlugins": "Plugins",
+    "contentThemes": "Temas",
+    "contentTemplates": "Modelos",
+    "sourcesDesc": "Configure onde o Grimoire busca por extras, temas e modelos de notas.",
+    "addIndexUrl": "Adicionar URL de índice (ex. https://.../index.json ou index.yaml)...",
     "githubProfile": "{{author}} no GitHub",
     "title": "Extras da comunidade",
     "description": "Instale recolhedores de metadados criados pela comunidade. Os extras podem preencher detalhes do sistema de jogo a partir de fontes externas.",
@@ -2526,6 +2532,7 @@
     "runsCode": "Executa código",
     "installTitle": "Instalar {{name}}?",
     "scriptWarning": "Este extra executa código Python no seu servidor com acesso à rede. Instale apenas extras de fontes fiáveis e leia primeiro o script.",
+    "unverifiedSourceScriptWarning": "Cuidado: Este extra está hospedado num repositório de fonte não verificado de terceiros. Garanta que confia nesta fonte antes de permitir a execução de scripts no seu servidor.",
     "scriptAcknowledge": "Compreendo que este extra executa código no meu servidor.",
     "allowScripts": "Permitir scripts de extras",
     "allowScriptsDesc": "Desativado por predefinição. Mesmo quando ativado, cada extra com script tem de ser aprovado individualmente na instalação.",
@@ -2538,6 +2545,8 @@
     "alreadyUpToDate": "Está tudo atualizado.",
     "updateTitle": "Atualizar {{name}}?",
     "scriptUpdateWarning": "Esta atualização altera o script do extra. Como o código mudou, precisa da sua aprovação novamente antes de o Grimoire o executar.",
+    "updateFromSpecificSource": "Atualizar de fonte específica",
+    "installFromSpecificSource": "Instalar de fonte específica",
     "categories": {
       "metadata": "Extratores de metadados",
       "metadataDesc": "Extensões que preenchem detalhes de sistemas de jogo e livros a partir de fontes externas."

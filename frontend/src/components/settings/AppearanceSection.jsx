@@ -6,6 +6,7 @@ import Spinner from '../Spinner'
 import { useTheme } from '../../context/ThemeContext'
 import { THEME_MODES } from '../../utils/theme'
 import AuthorByline from './AuthorByline'
+import PluginSourcePill from './PluginSourcePill'
 
 /**
  * Per-user appearance: light/dark/system, plus installing and picking a theme.
@@ -33,7 +34,7 @@ export default function AppearanceSection() {
 
   const loadState = useCallback(() => {
     api
-      .get('/themes')
+      .get(`/themes?_t=${Date.now()}`)
       .then(setState)
       .catch((e) => setError(e.message))
   }, [])
@@ -49,8 +50,8 @@ export default function AppearanceSection() {
     return promise
       .then(() => {
         if (successMessage) setNotice(successMessage)
-        reload()
         loadState()
+        reload()
         return true
       })
       .catch((e) => {
@@ -64,7 +65,7 @@ export default function AppearanceSection() {
     setBusy(true)
     setError('')
     api
-      .get('/themes/browse')
+      .get(`/themes/browse?_t=${Date.now()}`)
       .then((body) => {
         setCatalogue(body)
         setBrowsing(true)
@@ -191,11 +192,28 @@ export default function AppearanceSection() {
                 onChange={() => selectTheme(theme.id)}
                 style={{ margin: 0, width: 14, height: 14 }}
               />
-              <span style={{ flex: 1 }}>
+              <span style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                 {theme.name}
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--text-muted)',
+                    marginLeft: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
                   {themeCoverage(t, theme)}
-                  {theme.is_community ? ` · ${t('appearance.community')}` : ''}
+                  {theme.source_url ? (
+                    <PluginSourcePill
+                      url={theme.source_url}
+                      isVerified={theme.source_url === state?.default_index_url}
+                      style={{ marginLeft: 4, marginTop: -2 }}
+                    />
+                  ) : (
+                    theme.is_community && ` · ${t('appearance.community')}`
+                  )}
                 </span>
               </span>
               <button
@@ -262,29 +280,48 @@ export default function AppearanceSection() {
           <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}>
             {t('appearance.catalogue')}
           </h4>
-          {catalogue.themes.length === 0 && (
+          {(catalogue?.themes?.length || 0) === 0 && (
             <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('appearance.empty')}</p>
           )}
           <ul style={{ listStyle: 'none' }}>
-            {catalogue.themes.map((theme) => (
+            {(catalogue?.themes || []).map((theme) => (
               <li
                 key={theme.id}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 12,
-                  padding: '10px 12px',
+                  gap: 16,
+                  padding: '12px 16px',
                   borderRadius: 8,
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
-                  marginBottom: 6,
+                  marginBottom: 8,
                 }}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14 }}>{theme.name}</div>
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                    {theme.name}
+                  </div>
                   {theme.description && (
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.4 }}>
                       {theme.description}
+                    </div>
+                  )}
+                  {theme.index_url && (
+                    <div style={{ marginTop: 2 }}>
+                      <PluginSourcePill
+                        url={theme.index_url}
+                        isVerified={theme.index_url === catalogue.default_index_url}
+                        trustedIndexUrls={catalogue?.trusted_index_urls || []}
+                      />
                     </div>
                   )}
                   <AuthorByline author={theme.author} authorUrl={theme.author_url} />
@@ -307,21 +344,6 @@ export default function AppearanceSection() {
               </li>
             ))}
           </ul>
-          {catalogue.is_custom_url && (
-            <p
-              style={{
-                fontSize: 12,
-                color: 'var(--text-muted)',
-                marginTop: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <LuLink size={12} />
-              {catalogue.index_url}
-            </p>
-          )}
         </div>
       )}
     </div>

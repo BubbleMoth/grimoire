@@ -57,7 +57,7 @@ def _clear_template_setting():
     """Leave no custom catalogue URL behind for the next test."""
     yield
     session = SessionLocal()
-    row = session.query(AppSetting).filter_by(key=catalogue.SETTING_INDEX_URL).first()
+    row = session.query(AppSetting).filter_by(key="wiki_templates.index_url").first()
     if row:
         session.delete(row)
         session.commit()
@@ -723,37 +723,14 @@ class TestDownload:
 
 
 class TestSource:
-    def test_sets_and_resets_the_catalogue_url(self, client, gm_headers, downloads_enabled):
+    def test_campaign_template_source_endpoint_is_removed(self, client, gm_headers):
         c = _campaign(client, gm_headers)
         url = f"/api/campaigns/{c['id']}/wiki/templates/source"
 
         resp = client.put(
             url, json={"index_url": "https://example.com/t.json"}, headers=gm_headers
         )
-        assert resp.status_code == 200
-        assert resp.json()["is_custom_url"] is True
-
-        resp = client.put(url, json={"index_url": ""}, headers=gm_headers)
-        assert resp.json()["index_url"] == config.DEFAULT_WIKI_TEMPLATE_INDEX_URL
-        assert resp.json()["is_custom_url"] is False
-
-    def test_a_non_http_url_is_rejected(self, client, gm_headers):
-        c = _campaign(client, gm_headers)
-        resp = client.put(
-            f"/api/campaigns/{c['id']}/wiki/templates/source",
-            json={"index_url": "file:///etc/passwd"},
-            headers=gm_headers,
-        )
-        assert resp.status_code == 400
-
-    def test_a_non_owner_cannot_change_the_source(self, client, gm_headers, player_headers):
-        c = _campaign(client, gm_headers)
-        resp = client.put(
-            f"/api/campaigns/{c['id']}/wiki/templates/source",
-            json={"index_url": "https://example.com/t.json"},
-            headers=player_headers,
-        )
-        assert resp.status_code == 403
+        assert resp.status_code in (404, 405)
 
 
 # --------------------------------------------------------------------------- #
@@ -1125,3 +1102,63 @@ class TestCategories:
             f"/api/campaigns/{c['id']}/wiki/templates", headers=gm_headers
         ).json()
         assert body["authored_system"] == AUTHORED_SYSTEM
+
+
+class TestMultiSourceCatalogue:
+    def test_derive_template_url(self):
+        assert catalogue._derive_template_url("https://example.com/templates/index.json") == "https://example.com/templates/index.json"
+        assert catalogue._derive_template_url("https://example.com/themes/index.json") == "https://example.com/themes/index.json"
+        assert catalogue._derive_template_url("https://example.com/index.yaml") == "https://example.com/templates/index.json"
+        assert catalogue._derive_template_url("https://example.com/index.json") == "https://example.com/templates/index.json"
+
+    def test_build_tree_aggregates_available_in(self):
+        cat = {
+            "templates": [
+                {
+                    "id": "npc",
+                    "name": "NPC",
+                    "category": "General",
+                    "version": "1.0.0",
+                    "index_url": "https://source1.com/templates/index.json",
+                },
+                {
+                    "id": "npc",
+                    "name": "NPC",
+                    "category": "General",
+                    "version": "1.1.0",
+                    "index_url": "https://source2.com/templates/index.json",
+                },
+            ]
+        }
+        tree = catalogue.build_tree(cat)
+        assert len(tree) == 1
+        npc = tree[0]["templates"][0]
+        assert npc["id"] == "npc"
+        assert npc["index_url"] == "https://source1.com/templates/index.json"
+        assert len(npc["available_in"]) == 2
+        assert npc["available_in"][0]["index_url"] == "https://source1.com/templates/index.json"
+        assert npc["available_in"][1]["index_url"] == "https://source2.com/templates/index.json"
+
+    def test_fetch_catalogue_skips_explicit_theme_urls_and_documents(self, monkeypatch, downloads_enabled):
+        """fetch_catalogue must skip URLs ending with themes/index.json and documents containing only themes."""
+        fetched_urls = []
+        def mock_fetch(url, **kw):
+            fetched_urls.append(url)
+            if "theme-doc" in url:
+                return {"version": 1, "themes": [{"id": "theme-1"}]}
+            return {"templates": [{"id": "tmpl-1", "name": "Template 1"}]}
+
+        monkeypatch.setattr(catalogue, "fetch_document", mock_fetch)
+        monkeypatch.setattr(catalogue, "get_index_urls", lambda db: [
+            "https://source1.com/themes/index.json",
+            "https://source2.com/theme-doc/index.json",
+            "https://source3.com/templates/index.json",
+        ])
+
+        res = catalogue.fetch_catalogue(None)
+        assert "https://source1.com/themes/index.json" not in fetched_urls
+        assert "https://source2.com/theme-doc/index.json" in fetched_urls
+        assert "https://source3.com/templates/index.json" in fetched_urls
+
+        assert len(res["templates"]) == 1
+        assert res["templates"][0]["id"] == "tmpl-1"

@@ -2504,6 +2504,12 @@
   },
   "addons": {
     "byAuthor": "por {{author}}",
+    "verifiedSource": "Fuente verificada",
+    "contentPlugins": "Plugins",
+    "contentThemes": "Temas",
+    "contentTemplates": "Plantillas",
+    "sourcesDesc": "Configura dónde Grimoire busca complementos, temas y plantillas de notas.",
+    "addIndexUrl": "Añadir URL de índice (p. ej. https://.../index.json o index.yaml)...",
     "githubProfile": "{{author}} en GitHub",
     "title": "Complementos de la comunidad",
     "description": "Instala recopiladores de metadatos aportados por la comunidad. Los complementos pueden rellenar los detalles del sistema de juego desde fuentes externas.",
@@ -2526,6 +2532,7 @@
     "runsCode": "Ejecuta código",
     "installTitle": "¿Instalar {{name}}?",
     "scriptWarning": "Este complemento ejecuta código Python en tu servidor con acceso a la red. Instala solo complementos de fuentes en las que confíes y lee antes el script.",
+    "unverifiedSourceScriptWarning": "Precaución: Este complemento está alojado en un repositorio de fuentes no verificado de terceros. Asegúrate de confiar en esta fuente antes de permitir que se ejecuten scripts en tu servidor.",
     "scriptAcknowledge": "Entiendo que este complemento ejecuta código en mi servidor.",
     "allowScripts": "Permitir scripts de complementos",
     "allowScriptsDesc": "Desactivado por defecto. Incluso activado, cada complemento con script debe aprobarse individualmente al instalarlo.",
@@ -2538,6 +2545,8 @@
     "alreadyUpToDate": "Todo está ya actualizado.",
     "updateTitle": "¿Actualizar {{name}}?",
     "scriptUpdateWarning": "Esta actualización cambia el script del complemento. Como el código ha cambiado, necesita tu aprobación de nuevo antes de que Grimoire lo ejecute.",
+    "updateFromSpecificSource": "Actualizar desde fuente específica",
+    "installFromSpecificSource": "Instalar desde fuente específica",
     "categories": {
       "metadata": "Extractores de metadatos",
       "metadataDesc": "Complementos que rellenan detalles de sistemas de juego y libros desde fuentes externas."

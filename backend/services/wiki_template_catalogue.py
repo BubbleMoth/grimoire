@@ -23,22 +23,17 @@ from sqlalchemy.orm import Session
 from .. import config
 from ..addons.authors import parse_author
 from ..addons.constants import (
+    DEFAULT_CACHE_TTL as CATALOGUE_CACHE_TTL,
+    DEFAULT_INDEX_URL as DEFAULT_ADDON_INDEX_URL,
     HTTP_MAX_BYTES,
     HTTP_MAX_REDIRECTS,
     external_installs_enabled,
 )
 from ..addons.fetch import AddonFetchError, fetch_document
-from ..models import AppSetting
 
 logger = logging.getLogger("grimoire.wiki_templates")
 
-# app_settings key holding an operator's custom catalogue URL. Empty/absent
-# means "use the built-in default".
-SETTING_INDEX_URL = "wiki_templates.index_url"
-
-# The catalogue is a small JSON document that changes rarely, so an hour of
-# caching keeps the browser instant without going stale in any way that matters.
-CATALOGUE_CACHE_TTL = 3600
+SETTING_INDEX_URL = "addons.index_url"
 
 # A template body is a markdown page. Far below the shared add-on cap, but
 # bounded on its own so a hostile catalogue cannot hand us a huge "page".
@@ -70,47 +65,139 @@ def _assert_downloads_enabled() -> None:
         )
 
 
+def get_index_urls(db: Session) -> list[str]:
+    """The template catalogue URLs, derived from configured add-on sources."""
+    from ..addons.registry import get_index_url as get_addon_index_url
+
+    addon_urls_str = get_addon_index_url(db)
+    addon_urls = [u.strip() for u in addon_urls_str.split(",") if u.strip()]
+    return addon_urls or [config.DEFAULT_WIKI_TEMPLATE_INDEX_URL]
+
+
 def get_index_url(db: Session) -> str:
-    """The catalogue URL: an operator's override, else the built-in default."""
-    row = db.query(AppSetting).filter_by(key=SETTING_INDEX_URL).first()
-    custom = (row.value or "").strip() if row and row.value else ""
-    return custom or config.DEFAULT_WIKI_TEMPLATE_INDEX_URL
+    urls = get_index_urls(db)
+    if not urls:
+        return config.DEFAULT_WIKI_TEMPLATE_INDEX_URL
+    if urls[0] == DEFAULT_ADDON_INDEX_URL:
+        return config.DEFAULT_WIKI_TEMPLATE_INDEX_URL
+    return urls[0]
 
 
 def set_index_url(db: Session, url: str) -> None:
-    """Persist a custom catalogue URL. An empty value restores the default."""
-    value = (url or "").strip()
-    if value and not value.startswith(("http://", "https://")):
-        raise TemplateCatalogueError("The catalogue URL must be an http(s) URL")
-    row = db.query(AppSetting).filter_by(key=SETTING_INDEX_URL).first()
-    if row:
-        row.value = value
-    else:
-        db.add(AppSetting(key=SETTING_INDEX_URL, value=value))
+    if url and not url.startswith(("http://", "https://")):
+        raise TemplateCatalogueError("index URL must be an http(s) URL")
+    from ..addons.registry import set_index_url as set_addon_index_url
+    set_addon_index_url(db, url)
 
 
 def is_custom_url(db: Session) -> bool:
-    return get_index_url(db) != config.DEFAULT_WIKI_TEMPLATE_INDEX_URL
+    urls = get_index_urls(db)
+    if not urls:
+        return False
+    return len(urls) != 1 or get_index_url(db) != config.DEFAULT_WIKI_TEMPLATE_INDEX_URL
+
+
+def _derive_template_url(url: str) -> str:
+    if url.endswith("templates/index.json"):
+        return url
+    if url.endswith("themes/index.json"):
+        # Explicit theme index URL; do not attempt to derive templates from it
+        return url
+    if url.endswith("index.yaml"):
+        return url.replace("index.yaml", "templates/index.json")
+    base = url.rsplit("/", 1)[0]
+    return f"{base}/templates/index.json"
 
 
 def fetch_catalogue(db: Session, force: bool = False) -> dict:
-    """The parsed catalogue document, served from the on-disk cache when fresh."""
+    """Fetch and merge community note template indexes from configured sources."""
     _assert_downloads_enabled()
-    url = get_index_url(db)
-    try:
-        raw = fetch_document(
-            url,
-            user_agent=f"Grimoire/{config.VERSION}",
-            cache_ttl=CATALOGUE_CACHE_TTL,
-            force=force,
-            timeout=FETCH_TIMEOUT,
-        )
-    except AddonFetchError as exc:
-        raise TemplateCatalogueError(str(exc)) from exc
+    urls = get_index_urls(db)
 
-    if not isinstance(raw, dict):
-        raise TemplateCatalogueError("The catalogue is not in the expected format")
-    return raw
+    all_templates: list[dict] = []
+    all_folders: list[dict] = []
+    last_error: Optional[Exception] = None
+    invalid_format = False
+
+    for url in urls:
+        # If the URL explicitly points to a theme index, do not fetch note templates from it
+        if url.endswith("themes/index.json"):
+            logger.debug("Skipping template fetch for explicit theme index URL %s", url)
+            continue
+
+        doc = None
+        try:
+            doc = fetch_document(
+                url,
+                user_agent=f"Grimoire/{config.VERSION}",
+                cache_ttl=CATALOGUE_CACHE_TTL,
+                force=force,
+                timeout=FETCH_TIMEOUT,
+            )
+            if not isinstance(doc, dict):
+                invalid_format = True
+        except AddonFetchError as exc:
+            last_error = exc
+            logger.debug("Could not fetch template source %s directly: %s", url, exc)
+
+        # If the fetched document is explicitly a theme index, skip attempting to parse templates from it
+        if isinstance(doc, dict) and "themes" in doc and not isinstance(doc.get("templates"), list) and not isinstance(doc.get("folders"), list):
+            logger.debug("Skipping template fetch for explicit theme index document %s", url)
+            continue
+
+        # 1. Direct match: URL returns a Template Index schema (has "templates" or "folders").
+        # If this source directly serves a template catalogue, process its contents
+        # and skip trying the derived templates/index.json path.
+        if isinstance(doc, dict) and (isinstance(doc.get("templates"), list) or isinstance(doc.get("folders"), list)):
+            if isinstance(doc.get("folders"), list):
+                all_folders.extend(doc["folders"])
+            if isinstance(doc.get("templates"), list):
+                for t in doc["templates"]:
+                    if isinstance(t, dict):
+                        t["index_url"] = url
+                all_templates.extend(doc["templates"])
+            continue
+
+        # 2. Add-on Index or unknown URL: try derived templates/index.json path
+        derived_url = _derive_template_url(url)
+        if derived_url != url:
+            try:
+                derived_doc = fetch_document(
+                    derived_url,
+                    user_agent=f"Grimoire/{config.VERSION}",
+                    cache_ttl=CATALOGUE_CACHE_TTL,
+                    force=force,
+                    timeout=FETCH_TIMEOUT,
+                )
+                if not isinstance(derived_doc, dict):
+                    invalid_format = True
+                if isinstance(derived_doc, dict) and (isinstance(derived_doc.get("templates"), list) or isinstance(derived_doc.get("folders"), list)):
+                    if isinstance(derived_doc.get("folders"), list):
+                        all_folders.extend(derived_doc["folders"])
+                    if isinstance(derived_doc.get("templates"), list):
+                        for t in derived_doc["templates"]:
+                            if isinstance(t, dict):
+                                t["index_url"] = derived_url
+                        all_templates.extend(derived_doc["templates"])
+            except AddonFetchError as exc:
+                last_error = exc
+                logger.debug("Skipping templates from derived URL %s: %s", derived_url, exc)
+
+    if not all_templates and not all_folders:
+        if len(urls) == 1:
+            if last_error:
+                raise TemplateCatalogueError(str(last_error))
+            if invalid_format:
+                raise TemplateCatalogueError("Index is not in the expected format")
+
+    primary_url = _derive_template_url(urls[0]) if urls else config.DEFAULT_WIKI_TEMPLATE_INDEX_URL
+    return {
+        "templates": all_templates,
+        "folders": all_folders,
+        "index_url": primary_url,
+        "default_index_url": config.DEFAULT_WIKI_TEMPLATE_INDEX_URL,
+        "is_custom_url": is_custom_url(db),
+    }
 
 
 def _clean_str(value: Any, limit: int = 500) -> str:
@@ -126,13 +213,7 @@ def _entries(catalogue: dict) -> list[dict]:
 
 
 def build_tree(catalogue: dict) -> list[dict]:
-    """Group catalogue entries into the folder tree the browser renders.
-
-    Folders come back sorted with the generic one pinned first and the rest
-    alphabetical by display name, which is the order a GM scanning for their
-    system expects. A template filed at the top level lands in the generic
-    folder rather than a nameless one.
-    """
+    """Group catalogue entries into the folder tree the browser renders."""
     names = {}
     raw_folders = catalogue.get("folders")
     if isinstance(raw_folders, list):
@@ -143,25 +224,34 @@ def build_tree(catalogue: dict) -> list[dict]:
                 if path:
                     names[path] = name or path
 
-    grouped: dict[str, list[dict]] = {}
+    grouped: dict[str, dict[str, dict]] = {}
     for entry in _entries(catalogue):
         template_id = _clean_str(entry.get("id"), 100)
         if not template_id:
             continue
         folder = _clean_str(entry.get("folder"), 200)
         author_name, author_url = parse_author(_clean_str(entry.get("author"), 120))
-        grouped.setdefault(folder, []).append(
-            {
+        index_url = _clean_str(entry.get("index_url"), 500)
+        version = _clean_str(entry.get("version"), 20)
+
+        folder_group = grouped.setdefault(folder, {})
+        if template_id not in folder_group:
+            folder_group[template_id] = {
                 "id": template_id,
                 "name": _clean_str(entry.get("name"), 200) or template_id,
-                "version": _clean_str(entry.get("version"), 20),
+                "version": version,
                 "system": _clean_str(entry.get("system"), 200),
                 "category": _clean_str(entry.get("category"), 200) or "General",
                 "description": _clean_str(entry.get("description"), 500),
                 "author": author_name,
                 "author_url": author_url,
+                "index_url": index_url,
+                "available_in": [{"index_url": index_url, "version": version}] if index_url else [],
             }
-        )
+        else:
+            existing = folder_group[template_id]
+            if index_url and not any(s["index_url"] == index_url for s in existing["available_in"]):
+                existing["available_in"].append({"index_url": index_url, "version": version})
 
     def folder_label(path: str) -> str:
         if not path:
@@ -170,17 +260,17 @@ def build_tree(catalogue: dict) -> list[dict]:
 
     def sort_key(path: str) -> tuple[int, str]:
         label = folder_label(path)
-        # "Generic" always leads; everything else is alphabetical.
         return (0 if label.lower() == "generic" else 1, label.lower())
 
     tree = []
     for path in sorted(grouped, key=sort_key):
+        templates_list = list(grouped[path].values())
         tree.append(
             {
                 "path": path,
                 "name": folder_label(path),
                 "templates": sorted(
-                    grouped[path],
+                    templates_list,
                     key=lambda t: (t["category"].lower(), t["name"].lower()),
                 ),
             }
@@ -188,10 +278,11 @@ def build_tree(catalogue: dict) -> list[dict]:
     return tree
 
 
-def find_entry(catalogue: dict, template_id: str) -> Optional[dict]:
+def find_entry(catalogue: dict, template_id: str, index_url: Optional[str] = None) -> Optional[dict]:
     for entry in _entries(catalogue):
         if _clean_str(entry.get("id"), 100) == template_id:
-            return entry
+            if not index_url or _clean_str(entry.get("index_url"), 500) == index_url:
+                return entry
     return None
 
 
@@ -237,7 +328,8 @@ def fetch_body(db: Session, entry: dict) -> str:
     _assert_downloads_enabled()
     import httpx
 
-    url = _resolve_body_url(get_index_url(db), entry)
+    index_url = entry.get("index_url") or get_index_url(db)
+    url = _resolve_body_url(index_url, entry)
     headers = {"User-Agent": f"Grimoire/{config.VERSION}"}
     try:
         with httpx.Client(

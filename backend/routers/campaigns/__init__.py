@@ -109,7 +109,6 @@ from .wiki_templates import (
     export_wiki_template,
     get_wiki_template,
     list_wiki_templates,
-    update_template_source,
     update_wiki_template,
     upload_wiki_template,
     use_wiki_template,
@@ -163,7 +162,6 @@ from ._response_schemas import (
     WikiTemplateBrowseOut,
     WikiTemplateDetailOut,
     WikiTemplateListOut,
-    WikiTemplateSourceOut,
     WikiTemplateUseOut,
 )
 
@@ -776,13 +774,6 @@ router.add_api_route(
     summary="Add a note template from an uploaded .md file",
     status_code=201,
     response_model=WikiTemplateDetailOut,
-)
-router.add_api_route(
-    "/{campaign_id}/wiki/templates/source",
-    update_template_source,
-    methods=["PUT"],
-    summary="Set the note-template catalogue URL",
-    response_model=WikiTemplateSourceOut,
 )
 router.add_api_route(
     "/{campaign_id}/wiki/templates/download/{template_id}",

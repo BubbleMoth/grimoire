@@ -2504,6 +2504,12 @@
   },
   "addons": {
     "byAuthor": "par {{author}}",
+    "verifiedSource": "Source vérifiée",
+    "contentPlugins": "Plugins",
+    "contentThemes": "Thèmes",
+    "contentTemplates": "Modèles",
+    "sourcesDesc": "Configurez l'endroit où Grimoire cherche les modules, les thèmes et les modèles de notes.",
+    "addIndexUrl": "Ajouter l'URL d'un index (ex. https://.../index.json ou index.yaml)...",
     "githubProfile": "{{author}} sur GitHub",
     "title": "Modules communautaires",
     "description": "Installez des collecteurs de métadonnées proposés par la communauté. Les modules peuvent compléter les détails des systèmes de jeu depuis des sources externes.",
@@ -2526,6 +2532,7 @@
     "runsCode": "Exécute du code",
     "installTitle": "Installer {{name}} ?",
     "scriptWarning": "Ce module exécute du code Python sur votre serveur avec un accès réseau. N'installez que des modules provenant de sources de confiance, et lisez d'abord le script.",
+    "unverifiedSourceScriptWarning": "Attention: Ce module est hébergé sur un dépôt source tiers non vérifié. Assurez-vous de faire confiance à cette source avant d'autoriser l'exécution de scripts sur votre serveur.",
     "scriptAcknowledge": "Je comprends que ce module exécute du code sur mon serveur.",
     "allowScripts": "Autoriser les scripts de modules",
     "allowScriptsDesc": "Désactivé par défaut. Même activé, chaque module utilisant un script doit être approuvé individuellement lors de son installation.",
@@ -2538,6 +2545,8 @@
     "alreadyUpToDate": "Tout est déjà à jour.",
     "updateTitle": "Mettre à jour {{name}} ?",
     "scriptUpdateWarning": "Cette mise à jour modifie le script du module. Le code ayant changé, votre approbation est de nouveau requise avant que Grimoire ne l'exécute.",
+    "updateFromSpecificSource": "Mettre à jour depuis une source spécifique",
+    "installFromSpecificSource": "Installer depuis une source spécifique",
     "categories": {
       "metadata": "Extracteurs de métadonnées",
       "metadataDesc": "Modules qui complètent les détails des systèmes de jeu et des livres depuis des sources externes."

@@ -2504,6 +2504,12 @@
   },
   "addons": {
     "byAuthor": "by {{author}}",
+    "verifiedSource": "Verified Source",
+    "contentPlugins": "Plugins",
+    "contentThemes": "Themes",
+    "contentTemplates": "Templates",
+    "sourcesDesc": "Configure where Grimoire looks for add-ons, themes, and note templates.",
+    "addIndexUrl": "Add index URL (e.g. https://.../index.json or index.yaml)...",
     "githubProfile": "{{author}} on GitHub",
     "title": "Community add-ons",
     "description": "Install metadata scrapers contributed by the community. Add-ons can fill in game system details from external sources.",
@@ -2526,6 +2532,7 @@
     "runsCode": "Runs code",
     "installTitle": "Install {{name}}?",
     "scriptWarning": "This add-on runs Python code on your server with network access. Only install add-ons from sources you trust, and read the script first.",
+    "unverifiedSourceScriptWarning": "Caution: This add-on is hosted on an unverified third-party source repository. Ensure you trust this source before allowing scripts to run on your server.",
     "scriptAcknowledge": "I understand this add-on runs code on my server.",
     "allowScripts": "Allow add-on scripts",
     "allowScriptsDesc": "Off by default. Even when enabled, each script-backed add-on must also be approved individually when you install it.",
@@ -2538,6 +2545,8 @@
     "alreadyUpToDate": "Everything is already up to date.",
     "updateTitle": "Update {{name}}?",
     "scriptUpdateWarning": "This update changes the add-on's script. Because the code has changed, it needs your approval again before Grimoire will run it.",
+    "updateFromSpecificSource": "Update from specific source",
+    "installFromSpecificSource": "Install from specific source",
     "categories": {
       "metadata": "Metadata scrapers",
       "metadataDesc": "Add-ons that fill in game system and book details from external sources."

@@ -299,12 +299,18 @@ export const campaigns = {
   useWikiTemplate: (id, templateId) =>
     api.post(`/campaigns/${id}/wiki/templates/${encodeURIComponent(templateId)}/use`),
   // The community catalogue.
-  browseWikiTemplates: (id, refresh) =>
-    api.get(`/campaigns/${id}/wiki/templates/browse${refresh ? '?refresh=true' : ''}`),
-  downloadWikiTemplate: (id, templateId) =>
-    api.post(`/campaigns/${id}/wiki/templates/download/${encodeURIComponent(templateId)}`),
-  setWikiTemplateSource: (id, indexUrl) =>
-    api.put(`/campaigns/${id}/wiki/templates/source`, { index_url: indexUrl }),
+  browseWikiTemplates: (id, refresh) => {
+    const params = new URLSearchParams()
+    if (refresh) params.set('refresh', 'true')
+    params.set('_t', Date.now())
+    return api.get(`/campaigns/${id}/wiki/templates/browse?${params.toString()}`)
+  },
+  downloadWikiTemplate: (id, templateId, indexUrl) => {
+    const query = indexUrl ? `?index_url=${encodeURIComponent(indexUrl)}` : ''
+    return api.post(
+      `/campaigns/${id}/wiki/templates/download/${encodeURIComponent(templateId)}${query}`
+    )
+  },
 
   // Categories (kind: 'note' | 'resource')
   listCategories: (id, kind) =>
@@ -599,6 +605,10 @@ const BULK_FOLDER_PATHS = {
   token: '/token-folders',
   audio: '/audio-folders',
   model: '/model-folders',
+}
+
+export const addons = {
+  verifyIndex: (url) => api.get(`/addons/verify-index?url=${encodeURIComponent(url || '')}`),
 }
 
 /**

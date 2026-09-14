@@ -130,8 +130,18 @@ def fetch_json(url: str, user_agent: str = "", timeout: int = HTTP_TIMEOUT) -> A
 
     try:
         return json.loads(body)
-    except ValueError as exc:
-        raise AddonFetchError("source did not return valid JSON") from exc
+    except ValueError:
+        # If strict JSON decoding fails, attempt parsing as YAML for index sources
+        # (e.g. index.yaml) before raising a fetch error.
+        try:
+            import yaml
+
+            parsed = yaml.safe_load(body)
+            if isinstance(parsed, (dict, list)):
+                return parsed
+        except Exception:
+            pass
+        raise AddonFetchError("source did not return valid JSON or YAML")
 
 
 def fetch_document(
@@ -148,6 +158,7 @@ def fetch_document(
     """
     if not force:
         cached = read_cache(url, cache_ttl)
+        # Early return on cache hit to avoid redundant network round trips
         if cached is not None:
             logger.debug("Add-on cache hit for %s", url)
             return cached

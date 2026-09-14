@@ -665,3 +665,63 @@ class TestFetchTheme:
                 return _Response()
 
         monkeypatch.setattr(httpx, "Client", _Client)
+
+
+class TestMultiSourceThemeCatalogue:
+    def test_derive_theme_url(self):
+        assert svc._derive_theme_url("https://example.com/themes/index.json") == "https://example.com/themes/index.json"
+        assert svc._derive_theme_url("https://example.com/index.yaml") == "https://example.com/themes/index.json"
+        assert svc._derive_theme_url("https://example.com/index.json") == "https://example.com/themes/index.json"
+
+    def test_list_entries_namespaces_theme_ids_by_source(self):
+        doc = {
+            "themes": [
+                {
+                    "id": "panda",
+                    "name": "Panda",
+                    "version": "1.0.0",
+                    "index_url": "https://source1.com/themes/index.json",
+                },
+                {
+                    "id": "panda",
+                    "name": "Panda",
+                    "version": "1.1.0",
+                    "index_url": "https://source2.com/themes/index.json",
+                },
+            ]
+        }
+        entries = svc.list_entries(doc)
+        assert len(entries) == 2
+        h1 = svc.compute_source_hash("https://source1.com/themes/index.json")
+        h2 = svc.compute_source_hash("https://source2.com/themes/index.json")
+        assert entries[0]["id"] == f"panda-{h1}"
+        assert entries[0]["raw_id"] == "panda"
+        assert entries[0]["index_url"] == "https://source1.com/themes/index.json"
+
+        assert entries[1]["id"] == f"panda-{h2}"
+        assert entries[1]["raw_id"] == "panda"
+        assert entries[1]["index_url"] == "https://source2.com/themes/index.json"
+
+    def test_fetch_catalogue_skips_explicit_template_urls_and_documents(self, db, monkeypatch):
+        """fetch_catalogue must skip URLs ending with templates/index.json and documents containing only templates/folders."""
+        fetched_urls = []
+        def mock_fetch(url, **kw):
+            fetched_urls.append(url)
+            if "template-doc" in url:
+                return {"version": 1, "templates": [{"id": "tmpl-1"}]}
+            return {"themes": [{"id": "theme-1", "name": "Theme 1"}]}
+
+        monkeypatch.setattr(svc, "fetch_document", mock_fetch)
+        monkeypatch.setattr(svc, "get_index_urls", lambda db: [
+            "https://source1.com/templates/index.json",
+            "https://source2.com/template-doc/index.json",
+            "https://source3.com/themes/index.json",
+        ])
+
+        res = svc.fetch_catalogue(db)
+        assert "https://source1.com/templates/index.json" not in fetched_urls
+        assert "https://source2.com/template-doc/index.json" in fetched_urls
+        assert "https://source3.com/themes/index.json" in fetched_urls
+
+        assert len(res["themes"]) == 1
+        assert res["themes"][0]["id"] == "theme-1"

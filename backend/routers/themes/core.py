@@ -149,13 +149,17 @@ def browse_themes(
         t.theme_id
         for t in db.query(UserTheme).filter_by(user_id=current_user.id).all()
     }
-    entries = svc.list_entries(doc)
-    for entry in entries:
-        entry["installed"] = entry["id"] in owned
+    unique_entries = {}
+    for entry in svc.list_entries(doc):
+        if entry["id"] not in unique_entries:
+            entry["installed"] = entry["id"] in owned or entry.get("raw_id") in owned
+            unique_entries[entry["id"]] = entry
+    entries = list(unique_entries.values())
     return {
         "themes": entries,
         "generated": str(doc.get("generated") or ""),
         "index_url": svc.get_index_url(db),
+        "default_index_url": config.DEFAULT_THEME_INDEX_URL,
         "is_custom_url": svc.is_custom_url(db),
     }
 
@@ -171,8 +175,8 @@ def _upsert(db: Session, user_id: str, theme: dict, source: dict | None) -> User
     row.app_mode = theme.get("app_mode") or svc.DEFAULT_APP_MODE
     row.variants = theme.get("variants") or {theme["mode"]: theme["tokens"]}
     row.tokens = theme["tokens"]
-    row.source_id = (source or {}).get("id")
-    row.source_url = (source or {}).get("url")
+    row.source_id = ((source.get("raw_id") or source.get("id")) if source else theme.get("source_id"))
+    row.source_url = (source or {}).get("url") or theme.get("source_url") or theme.get("index_url")
     row.source_version = (source or {}).get("version") or theme.get("version") or None
     return row
 
@@ -198,7 +202,7 @@ def install_theme(
         db,
         current_user.id,
         theme,
-        {"id": theme_id, "url": svc.get_index_url(db), "version": entry.get("version")},
+        {"id": theme_id, "url": entry.get("index_url") or svc.get_index_url(db), "version": entry.get("version")},
     )
     db.commit()
     db.refresh(row)

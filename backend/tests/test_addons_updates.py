@@ -12,6 +12,7 @@ import yaml
 from backend.addons import registry
 from backend.addons import install as install_mod
 from backend.addons.constants import (
+    DEFAULT_INDEX_URL,
     SETTING_ALLOW_SCRIPTS,
     SETTING_INDEX_CACHE,
     SETTING_INDEX_URL,
@@ -73,8 +74,13 @@ def addons_dir(tmp_path, monkeypatch):
 def files(monkeypatch):
     store: dict[str, bytes] = {}
 
+    base_prefix = DEFAULT_INDEX_URL.rsplit('/', 1)[0]
+
     def fake_fetch_text(url):
         if url not in store:
+            alt_url = url.replace(base_prefix, "https://example.com")
+            if alt_url in store:
+                return store[alt_url]
             raise AddonFetchError(f"download returned HTTP 404 ({url})")
         return store[url]
 
@@ -108,9 +114,10 @@ def _publish(db, files, version="1.0.0", addon_id="demo", **manifest_extra):
     files[f"https://example.com/scrapers/{addon_id}/{addon_id}.yml"] = body
     cached = registry.get_cached_index(db)
     entries = [e for e in (cached.get("addons") or []) if e["id"] != addon_id]
+    entry["index_url"] = DEFAULT_INDEX_URL
     entries.append(entry)
     registry.save_cached_index(
-        db, {"version": 1, "addons": entries, "_url": "https://example.com/index.json"}
+        db, {"version": 1, "addons": entries, "_url": DEFAULT_INDEX_URL}
     )
     db.commit()
     return entry
@@ -165,7 +172,7 @@ class TestPendingUpdates:
         _publish(db, files, "1.0.0")
         install_mod.install(db, "demo")
         _publish(db, files, "1.1.0")
-        assert install_mod.pending_updates(db) == [("demo", "1.0.0", "1.1.0")]
+        assert install_mod.pending_updates(db) == [("demo", "1.0.0", "1.1.0", DEFAULT_INDEX_URL)]
 
     def test_not_detected_for_an_older_index_entry(self, db, addons_dir, files):
         _publish(db, files, "2.0.0")

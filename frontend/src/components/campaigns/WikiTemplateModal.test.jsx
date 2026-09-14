@@ -14,7 +14,6 @@ vi.mock('../../api', () => ({
     useWikiTemplate: vi.fn(),
     browseWikiTemplates: vi.fn(),
     downloadWikiTemplate: vi.fn(),
-    setWikiTemplateSource: vi.fn(),
   },
 }))
 
@@ -48,6 +47,7 @@ const CATALOGUE = {
           name: 'Session Recap',
           category: 'Sessions',
           description: 'A recap.',
+          index_url: 'https://raw.githubusercontent.com/x/main/templates/index.json',
         },
       ],
     },
@@ -61,6 +61,7 @@ const CATALOGUE = {
           system: 'D&D 5e',
           category: 'Spells',
           description: 'A spell.',
+          index_url: 'https://raw.githubusercontent.com/x/main/templates/index.json',
         },
       ],
     },
@@ -286,7 +287,11 @@ describe('WikiTemplateModal — browse tab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Download/ }))
     await waitFor(() =>
-      expect(campaigns.downloadWikiTemplate).toHaveBeenCalledWith('c1', '5e-spell')
+      expect(campaigns.downloadWikiTemplate).toHaveBeenCalledWith(
+        'c1',
+        '5e-spell',
+        'https://raw.githubusercontent.com/x/main/templates/index.json'
+      )
     )
     // Success is stated outright, not just implied by a changed label.
     expect(await screen.findByRole('button', { name: /Added/ })).toBeTruthy()
@@ -316,57 +321,6 @@ describe('WikiTemplateModal — browse tab', () => {
     campaigns.browseWikiTemplates.mockRejectedValue(new Error('source timed out'))
     await openBrowse()
     expect(await screen.findByText('source timed out')).toBeTruthy()
-  })
-
-  it('says which catalogue is in use', async () => {
-    await openBrowse()
-    expect(await screen.findByText('Using the community catalogue')).toBeTruthy()
-  })
-
-  it('keeps the catalogue URL behind a button, and can change it', async () => {
-    campaigns.setWikiTemplateSource.mockResolvedValue({})
-    await openBrowse()
-    await screen.findByText('Using the community catalogue')
-    // The field is hidden until asked for.
-    expect(screen.queryByLabelText('Change the catalogue URL')).toBeInstanceOf(HTMLButtonElement)
-
-    fireEvent.click(screen.getByLabelText('Change the catalogue URL'))
-    const input = await screen.findByPlaceholderText(/templates\/index.json/)
-    fireEvent.change(input, { target: { value: 'https://example.com/t.json' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() =>
-      expect(campaigns.setWikiTemplateSource).toHaveBeenCalledWith(
-        'c1',
-        'https://example.com/t.json'
-      )
-    )
-  })
-
-  it('keeps the Save/Reset labels on one line beside the URL input', async () => {
-    // The URL is long; without a shrinkable input and non-shrinking buttons the
-    // buttons get squeezed until their labels wrap mid-word.
-    await openBrowse()
-    fireEvent.click(await screen.findByLabelText('Change the catalogue URL'))
-
-    const input = await screen.findByPlaceholderText(/templates\/index.json/)
-    // `flex: 1` serialises to the longhand.
-    expect(input.style.flex).toBe('1 1 0%')
-    expect(input.style.minWidth).toBe('0px')
-
-    for (const name of ['Save', 'Reset']) {
-      const button = screen.getByRole('button', { name })
-      expect(button.style.flexShrink).toBe('0')
-      expect(button.style.whiteSpace).toBe('nowrap')
-    }
-  })
-
-  it('resets the catalogue URL to the default', async () => {
-    campaigns.setWikiTemplateSource.mockResolvedValue({})
-    await openBrowse()
-    fireEvent.click(await screen.findByLabelText('Change the catalogue URL'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Reset' }))
-    await waitFor(() => expect(campaigns.setWikiTemplateSource).toHaveBeenCalledWith('c1', ''))
   })
 
   it('refreshes the catalogue on demand', async () => {

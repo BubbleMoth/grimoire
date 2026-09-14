@@ -31,7 +31,6 @@ from ..addons.constants import (
 )
 from ..addons.authors import parse_author
 from ..addons.fetch import AddonFetchError, fetch_document
-from ..models import AppSetting
 
 logger = logging.getLogger("grimoire.themes")
 
@@ -296,49 +295,133 @@ def _assert_downloads_enabled() -> None:
         raise ThemeError("Downloading themes is disabled on this server")
 
 
+def get_index_urls(db: Session) -> list[str]:
+    """The theme catalogue URLs, derived from the configured add-on sources."""
+    from ..addons.registry import get_index_url as get_addon_index_url
+
+    addon_urls_str = get_addon_index_url(db)
+    addon_urls = [u.strip() for u in addon_urls_str.split(",") if u.strip()]
+    return addon_urls or [config.DEFAULT_THEME_INDEX_URL]
+
+
 def get_index_url(db: Session) -> str:
-    """The catalogue URL: an operator's override, else the built-in default."""
-    row = db.query(AppSetting).filter_by(key=SETTING_INDEX_URL).first()
-    custom = (row.value or "").strip() if row and row.value else ""
-    return custom or config.DEFAULT_THEME_INDEX_URL
+    """The primary catalogue URL."""
+    urls = get_index_urls(db)
+    return urls[0] if urls else config.DEFAULT_THEME_INDEX_URL
 
 
 def is_custom_url(db: Session) -> bool:
-    return get_index_url(db) != config.DEFAULT_THEME_INDEX_URL
+    urls = get_index_urls(db)
+    return len(urls) != 1 or urls[0] != config.DEFAULT_THEME_INDEX_URL
+
+
+def _derive_theme_url(url: str) -> str:
+    if url.endswith("themes/index.json"):
+        return url
+    if url.endswith("templates/index.json"):
+        # Explicit template index URL; do not attempt to derive themes from it
+        return url
+    if url.endswith("index.yaml"):
+        return url.replace("index.yaml", "themes/index.json")
+    base = url.rsplit("/", 1)[0]
+    return f"{base}/themes/index.json"
 
 
 def fetch_catalogue(db: Session) -> dict[str, Any]:
-    """Fetch and cache the community theme index."""
+    """Fetch and cache community theme indexes from all configured sources with schema detection."""
     _assert_downloads_enabled()
-    url = get_index_url(db)
-    try:
-        doc = fetch_document(
-            url,
-            cache_ttl=CATALOGUE_CACHE_TTL,
-            timeout=FETCH_TIMEOUT,
-            user_agent=f"Grimoire/{config.VERSION}",
-        )
-    except AddonFetchError as exc:
-        raise ThemeError(str(exc)) from exc
-    if not isinstance(doc, dict):
-        raise ThemeError("The theme catalogue is not in the expected format")
-    return doc
+    urls = get_index_urls(db)
+
+    all_themes: list[dict[str, Any]] = []
+
+    for url in urls:
+        # If the URL explicitly points to a note template index, do not fetch themes from it
+        if url.endswith("templates/index.json"):
+            logger.debug("Skipping theme fetch for explicit template index URL %s", url)
+            continue
+
+        doc = None
+        try:
+            doc = fetch_document(
+                url,
+                cache_ttl=CATALOGUE_CACHE_TTL,
+                timeout=FETCH_TIMEOUT,
+                user_agent=f"Grimoire/{config.VERSION}",
+            )
+        except AddonFetchError as exc:
+            logger.debug("Could not fetch source %s directly: %s", url, exc)
+
+        # If the fetched document is explicitly a template index, skip attempting to parse themes from it
+        if isinstance(doc, dict) and ("templates" in doc or "folders" in doc) and not isinstance(doc.get("themes"), list):
+            logger.debug("Skipping theme fetch for explicit template index document %s", url)
+            continue
+
+        # 1. Direct match: The URL itself returned a Theme Index schema.
+        # If this URL directly hosts a theme catalogue, stamp and collect its items,
+        # then skip attempting to fetch from a derived themes/index.json subpath.
+        if isinstance(doc, dict) and isinstance(doc.get("themes"), list):
+            for t in doc["themes"]:
+                if isinstance(t, dict):
+                    t["index_url"] = url
+            all_themes.extend(doc["themes"])
+            continue
+
+        # 2. Add-on Index or unknown URL: try derived themes/index.json path
+        derived_url = _derive_theme_url(url)
+        if derived_url != url:
+            try:
+                derived_doc = fetch_document(
+                    derived_url,
+                    cache_ttl=CATALOGUE_CACHE_TTL,
+                    timeout=FETCH_TIMEOUT,
+                    user_agent=f"Grimoire/{config.VERSION}",
+                )
+                if isinstance(derived_doc, dict) and isinstance(derived_doc.get("themes"), list):
+                    for t in derived_doc["themes"]:
+                        if isinstance(t, dict):
+                            t["index_url"] = derived_url
+                    all_themes.extend(derived_doc["themes"])
+            except AddonFetchError as exc:
+                logger.debug("Skipping themes from derived URL %s: %s", derived_url, exc)
+
+    return {
+        "themes": all_themes,
+        "index_url": urls[0] if urls else config.DEFAULT_THEME_INDEX_URL,
+        "default_index_url": config.DEFAULT_THEME_INDEX_URL,
+        "is_custom_url": is_custom_url(db),
+    }
+
+
+def compute_source_hash(index_url: str) -> str:
+    """Compute an 8-character deterministic hash from a normalized index URL."""
+    if not index_url:
+        return ""
+    norm = index_url.strip().rstrip("/").lower()
+    return hashlib.sha256(norm.encode("utf-8")).hexdigest()[:8]
 
 
 def list_entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
-    """The catalogue's themes, with untrusted strings bounded."""
+    """The catalogue's themes, with untrusted strings bounded and IDs namespaced by source."""
     raw = doc.get("themes")
     if not isinstance(raw, list):
         return []
     out = []
+    by_id: dict[str, dict[str, Any]] = {}
     for entry in raw:
         if not isinstance(entry, dict) or not valid_theme_id(entry.get("id")):
             continue
+        raw_id = entry["id"]
+        index_url = str(entry.get("index_url") or "")
+        url_hash = compute_source_hash(index_url)
+        theme_id = f"{raw_id}-{url_hash}" if url_hash else raw_id
+        version = str(entry.get("version") or "")[:20]
         author_name, author_url = _author(entry)
-        out.append(
-            {
-                "id": entry["id"],
-                "name": str(entry.get("name") or entry["id"])[:120],
+
+        if theme_id not in by_id:
+            item = {
+                "id": theme_id,
+                "raw_id": raw_id,
+                "name": str(entry.get("name") or raw_id)[:120],
                 "description": str(entry.get("description") or "")[:500],
                 "mode": (
                     str(entry.get("mode") or "dark").lower()
@@ -356,14 +439,21 @@ def list_entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
                     if m in (entry.get("modes") or [])
                 ]
                 or [str(entry.get("mode") or "dark").lower()],
-                "version": str(entry.get("version") or "")[:20],
+                "version": version,
                 "author": author_name,
                 "author_url": author_url,
                 "path": str(entry.get("path") or ""),
                 "sha256": str(entry.get("sha256") or ""),
                 "grimoire_min_version": str(entry.get("grimoire_min_version") or "")[:20],
+                "index_url": index_url,
+                "available_in": [{"index_url": index_url, "version": version}] if index_url else [],
             }
-        )
+            by_id[theme_id] = item
+            out.append(item)
+        else:
+            existing = by_id[theme_id]
+            if index_url and not any(s["index_url"] == index_url for s in existing.get("available_in", [])):
+                existing.setdefault("available_in", []).append({"index_url": index_url, "version": version})
     return out
 
 
@@ -374,7 +464,7 @@ def _author(entry: dict[str, Any]) -> tuple[str, str]:
 
 def find_entry(doc: dict[str, Any], theme_id: str) -> Optional[dict[str, Any]]:
     for entry in list_entries(doc):
-        if entry["id"] == theme_id:
+        if entry["id"] == theme_id or entry.get("raw_id") == theme_id:
             return entry
     return None
 
@@ -443,7 +533,8 @@ def fetch_theme(db: Session, entry: dict[str, Any]) -> dict[str, Any]:
 
     import httpx
 
-    url = _resolve_theme_url(get_index_url(db), entry.get("path", ""))
+    index_url = entry.get("index_url") or get_index_url(db)
+    url = _resolve_theme_url(index_url, entry.get("path", ""))
     headers = {"User-Agent": f"Grimoire/{config.VERSION}"}
     try:
         with httpx.Client(
@@ -475,6 +566,7 @@ def fetch_theme(db: Session, entry: dict[str, Any]) -> dict[str, Any]:
     # The catalogue is the thing the user chose to trust, so its metadata wins
     # over whatever the file claims about itself.
     theme["id"] = entry["id"]
+    theme["raw_id"] = entry.get("raw_id") or entry["id"]
     theme["name"] = entry.get("name") or theme["name"]
     theme["version"] = entry.get("version") or theme["version"]
     return theme

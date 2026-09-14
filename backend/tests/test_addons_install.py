@@ -72,8 +72,13 @@ def files(monkeypatch):
     """A stub for the download of individual add-on files, keyed by URL."""
     store: dict[str, bytes] = {}
 
+    base_prefix = constants.DEFAULT_INDEX_URL.rsplit('/', 1)[0]
+
     def fake_fetch_text(url):
         if url not in store:
+            alt_url = url.replace(base_prefix, "https://example.com")
+            if alt_url in store:
+                return store[alt_url]
             raise AddonFetchError(f"download returned HTTP 404 ({url})")
         return store[url]
 
@@ -81,7 +86,7 @@ def files(monkeypatch):
     return store
 
 
-def _seed_index(db, entries, url="https://example.com/index.json"):
+def _seed_index(db, entries, url=constants.DEFAULT_INDEX_URL):
     payload = {"version": 1, "generated": "", "addons": entries, "_url": url}
     registry.save_cached_index(db, payload)
     db.commit()
@@ -97,6 +102,7 @@ def _index_entry(manifest_body, **overrides):
         "path": "scrapers/demo/demo.yml",
         "requires_script": False,
         "sha256": _digest(manifest_body),
+        "index_url": constants.DEFAULT_INDEX_URL,
     }
     entry.update(overrides)
     return entry
@@ -456,3 +462,73 @@ class TestExternalInstallKillSwitch:
         assert constants.external_installs_enabled() is False
         monkeypatch.setattr(config, "DISABLE_EXTERNAL_ADD_ON_INSTALL", False)
         assert constants.external_installs_enabled() is True
+
+
+class TestAddonFetchYamlAndMultiSource:
+    def test_fetch_json_parses_yaml(self, monkeypatch):
+        yaml_data = "version: 1\naddons:\n  - id: demo\n    name: Demo\n"
+
+        class _Response:
+            status_code = 200
+            headers = {}
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+            def iter_bytes(self):
+                yield yaml_data.encode()
+
+        class _Client:
+            def __init__(self, **kwargs):
+                pass
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+            def stream(self, method, url):
+                return _Response()
+
+        monkeypatch.setattr(httpx, "Client", _Client)
+        res = fetch.fetch_json("https://example.com/index.yaml")
+        assert res["version"] == 1
+        assert res["addons"][0]["id"] == "demo"
+
+    def test_find_entry_matches_index_url(self, db):
+        entry1 = _index_entry(_yaml_bytes(MANIFEST))
+        entry1["index_url"] = "https://source1.com/index.json"
+        entry2 = _index_entry(_yaml_bytes({**MANIFEST, "name": "Demo Source 2"}))
+        entry2["index_url"] = "https://source2.com/index.json"
+
+        install.save_cached_index(db, {"version": 1, "addons": [entry1, entry2]})
+
+        found1 = install.find_entry(db, "demo", index_url="https://source1.com/index.json")
+        assert found1 is not None
+        assert found1.index_url == "https://source1.com/index.json"
+
+    def test_refresh_index_skips_explicit_theme_or_template_urls(self, db, monkeypatch):
+        """refresh_index must skip URLs ending with themes/index.json or templates/index.json, and documents containing only themes/templates."""
+        fetched_urls = []
+        def mock_fetch(url, **kw):
+            fetched_urls.append(url)
+            if "theme-doc" in url:
+                return {"version": 1, "themes": [{"id": "theme-1"}]}
+            return {"version": 1, "addons": [{"id": "addon-1", "name": "Addon 1", "author": "Author", "version": "1.0", "path": "a1.zip", "sha256": "abc"}]}
+
+        monkeypatch.setattr(install, "fetch_json", mock_fetch)
+
+        urls = [
+            "https://source1.com/themes/index.json",
+            "https://source2.com/templates/index.json",
+            "https://source3.com/theme-doc/index.json",
+            "https://source4.com/addons/index.json",
+        ]
+        result = install.refresh_index(db, ",".join(urls))
+        # themes/index.json and templates/index.json should be skipped before fetching
+        assert "https://source1.com/themes/index.json" not in fetched_urls
+        assert "https://source2.com/templates/index.json" not in fetched_urls
+        assert "https://source3.com/theme-doc/index.json" in fetched_urls
+        assert "https://source4.com/addons/index.json" in fetched_urls
+
+        # Only addons from source4 should be returned in result
+        assert len(result["addons"]) == 1
+        assert result["addons"][0]["id"] == "addon-1"
