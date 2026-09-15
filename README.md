@@ -23,28 +23,80 @@ A Docker-based web application for managing your tabletop RPG PDF collection. Br
 - **Library Browser** - Organizes your collection by game system with automatic folder detection
 - **Full-Text Search** - Every page of every PDF is indexed with SQLite FTS5 for instant search; also finds books by title, author, or publisher, and maps, tokens, audio, and 3D models by filename, folder, or tag. Narrow a search to one field with `title:`, `author:`, `tag:` and friends - see [Searching your library](#searching-your-library)
 - **Page-by-Page Viewer** - PDFs rendered as images for fast mobile viewing with pinch-to-zoom, swipe navigation, and spread mode
-- **Map Gallery** - Browse battlemaps by directory structure with tag filtering, grid metadata, and full-res download. Image, PDF, animated (`.webm`/`.mp4`), and Universal VTT (`.uvtt`/`.dd2vtt`) maps all display in-app; multi-page PDF maps open in a viewer with single-page, two-page spread, and raw-PDF modes. Large maps are shown through a downscaled preview so they appear promptly no matter how big the original is, while downloads still give you the untouched file
+- **Map Gallery** - Browse battlemaps by directory structure with tag filtering, grid metadata, and full-res download. Image, PDF, animated (`.webm`/`.mp4`), and Universal VTT (`.uvtt`/`.dd2vtt`) maps all display in-app; multi-page PDF maps open in a viewer with single-page, two-page spread, and raw-PDF modes. Large maps are shown through a downscaled preview so they appear promptly no matter how big the original is, while downloads still give you the untouched file. Any image map can be exported as a Universal VTT file, with an in-app editor for drawing the walls, doors, and lights a virtual tabletop uses for dynamic lighting - it opens existing `.uvtt` files on the geometry they already carry, and also takes a map uploaded straight from your desktop
 - **Token Browser** - Browse and tag character tokens and portrait assets
 - **Audio Library** - Browse ambient tracks, soundscapes, music, and sound effects by directory structure with tag filtering and in-browser playback (MP3, OGG, Opus, FLAC, WAV, M4A, AAC). Reads embedded duration and title/artist/album tags, and uses folder `cover`/`folder` images or embedded album art for artwork
 - **Global Audio Player** - A persistent pop-out player that keeps playing while you navigate. Build a local queue by playing a whole folder, queueing tracks one at a time ("Play Next" - which shows a check once a track is in the queue, so you can see at a glance what you have already lined up), having a GM play a campaign resource group, or playing all the audio embedded in a wiki note. Expand it to see and reorder upcoming tracks, with a repeat-current-track toggle
 - **Soundboard** - A floating grid of one-tap sound pads for effects and stingers, separate from the player queue. Any track can go to either destination: the **Add to soundboard** button sits next to "Play Next" on audio rows and track pages, and multi-select adds a whole selection at once. Pads play _over_ whatever the player is doing (and over each other), so a door slam lands on top of your tavern ambience; each pad has its own loop toggle, and a stop button silences everything. The panel starts in the bottom-right corner, drags anywhere on the page, and keeps its place, pads, and grid size across navigation and restarts. A single **configure** toggle opens everything that changes the board's shape - set the grid anywhere from 1 to 8 columns by 1 to 15 rows (5x5, 3x8, or a single column of 15, whatever suits your table), drag pads to rearrange them, and remove the ones you are done with - so nothing destructive sits on a pad you are tapping mid-session
 - **Saved Playlists and Soundboards** - Name and keep the scenes you build. A **save** button on the player queue and on the soundboard's title bar stores what is currently loaded - a playlist's ordered tracks, or a board's pads, their order, their loop flags, and the grid size - under a name like "Tavern" or "Boss Fight". **Saved sets** on the Audio page lists everything you have kept, with its track or pad count, and loads it back into the live player or board. Saved sets live on the server against your account rather than in one browser, so a board built at home is there at the table, on any device. Loading replaces what is live and asks first if there is something to lose; a playlist can also be **added to the queue** instead, so the next scene lines up behind the track that is still playing. Rename and delete from the same list, and re-saving a name updates that set rather than leaving you with two. Tracks that have since left your library are skipped on load with a note saying how many, so an old set still works after a library reshuffle. Your current queue and board are untouched by any of this - saving is always something you ask for
 - **Bookmarks** - Per-user page and text-selection bookmarks with inline highlights
-- **Favorites** - Save systems, books, maps, tokens, audio, and 3D models for quick access
+- **Step Through a Folder** - Opening a map, token, audio track, or 3D model gives you arrows either side of it and a "3 / 12" counter, so you can walk the rest of its folder without returning to the gallery between each one. The arrow keys do the same, and an image map or token can also be swiped across on a phone. Maps already worked this way; tokens, audio, and models now do too
+- **Favorites** - Save systems, books, maps, tokens, audio, and 3D models for quick access. The favourite button sits on the grid cards and list rows, and also on a map, token, audio track, or model's own page - so you can star something while you are looking at it rather than going back to the gallery to find its card
 - **Shared Tags** - One tag catalog across systems, books, maps, tokens, audio, and 3D models. Tags match on a lowercased internal key with an editable display name, so "Draw Steel" and "draw steel" are the same tag. A dedicated Tags page lists every tag with usage counts, lets you rename/merge/delete, and browses all items carrying a tag; clicking a tag anywhere jumps there. Anything you can browse there you can also take with you: **Download** buttons sit on the tag itself, on each resource-type section, and on each tagged folder, so a tag's files come down as one archive without hunting for where they live on disk. Filter dropdowns show only tags used on the current page, and campaign resources can be bulk-added by tag
 - **View Modes** - Toggle the systems, books, maps, tokens, audio, and model grids between card, compact, and list layouts; each content type remembers its own default (configurable in Account Settings) while the in-page toggle is a per-tab override. Cards and list rows include quick download and favorite buttons.
 - **Metadata Editor** - Rich metadata for systems (multiple genres, dice/materials, system family, parent system + edition, license, year, and multiple generic + character-builder links) and books (authors, artists, genres, ISBN, version, language, a per-book license override, a variable-precision publication date, and multiple links). Genres, system families, parent systems, licenses, and dice/materials are drawn from curated lists you manage in **Settings → Metadata** (each section collapsible; defaults plus your own custom values). A _parent system_ groups related systems (e.g. D&D 5e and AD&D under "Dungeons & Dragons"), and an _edition_ string combines with it for display ("Cyberpunk" + "Red" → "Cyberpunk Red")
 - **Community Add-ons** - Install metadata scrapers contributed by the community to fill in game system and book details from external sources (TTRPG Wiki for systems, DriveThruRPG for books). Open a system or book, hit **Fetch metadata**, pick a match, and review a field-by-field diff before anything is written - values you have already set are never pre-selected. Definitions live in the separate [community-add-ons](https://github.com/grimoire-codex/community-add-ons) repo, so a source that changes can be fixed without waiting for a Grimoire release. Manage and update them in **Settings → Add-ons**, where each add-on shows a "by <author>" credit for whoever wrote it; see [`docs/addons.md`](docs/addons.md)
 - **Themes & Light Mode** - Choose light, dark, or system (which follows your OS) in **Settings → Account → Appearance**. Beyond the built-in palettes you can install colour themes: browse the community catalogue, or paste a theme's JSON to install it directly. Themes are **per user** - one is installed into your own account and changes nothing for anyone else, so no admin approval is involved. A theme can pair a light and a dark palette, so it shows as one entry and **System** switches between them with your OS. The catalogue ships **High Contrast**, which does exactly that with every text-on-background pairing at WCAG AAA; it raises luminance contrast only and does not address colourblindness. See [`docs/themes.md`](docs/themes.md)
 - **Wiki Note Templates** - Start a campaign wiki page from a template instead of a blank note. Browse a community catalogue as a folder tree (Generic, Draw Steel, Dungeons & Dragons 5e, …) and download copies into your campaign, write your own, or upload a Markdown file or template `.zip`. Templates belong to the campaign, so you can edit a downloaded one freely; any template exports as a ready-to-contribute folder that uploads straight back in. Downloading can be turned off with `DISABLE_EXTERNAL_ADD_ON_INSTALL` while authoring and upload keep working; see [`docs/wiki-templates.md`](docs/wiki-templates.md)
-- **Sort & Filter** - Sort systems by name, book count, total page count, or year, and books by title, page count, or year. A shared filter modal covers genre, system family, parent system, edition, dice/materials, tags, favourites, and explicit content. Named filter presets are saved to your account (server-side, so they follow you across devices), and one preset per view can be set as the default you land on. The default applies every time you arrive at a view fresh - from anywhere else in the app, or on a reload. The one exception is the in-app back button: if you change the filters, open an item, and come back, you land on what you were looking at rather than having the default reapplied over it. Sort, filters, saved presets, multi-select, and the view switcher share a single toolbar row that stays pinned to the top of the page as you scroll, so bulk-selecting entries near the bottom of a long library no longer means scrolling back up
-- **Bulk Actions** - Multi-select books, maps, tokens, audio, and 3D models (click, shift-click for a range, ⌘/Ctrl-click to toggle) then bulk tag, add to a campaign, or edit metadata via a carousel. An "apply to all" button opens a checklist of fields to copy from the item you are on to the whole selection - tick Category and every selected book moves at once - and books and systems can pull metadata from an installed add-on without leaving the carousel. A single book can be added to a campaign without multi-select from its actions menu (**⋮**)
+- **Sort & Filter** - Sort systems by name, book count, total page count, or year, and books by title, page count, or year. A shared filter modal covers genre, system family, parent system, edition, dice/materials, tags, favourites, and explicit content. Genre and dice/materials are single-value pickers everywhere they appear, each offering the same "No genre" / "Any genre" presence options. Tags are a small boolean expression instead: each row is a group of tags that are OR'd together, and every group has to match, so `Building` and `store or shop` as two rows finds anything tagged Building that is also a store or a shop. A group can be flipped from "any of" to "none of" to exclude tags instead, and the same builder is used for systems, books, maps, tokens, audio, and models. Named filter presets are saved to your account (server-side, so they follow you across devices), and one preset per view can be set as the default you land on. The default applies every time you arrive at a view fresh - from anywhere else in the app, or on a reload. The one exception is the in-app back button: if you change the filters, open an item, and come back, you land on what you were looking at rather than having the default reapplied over it. Sort, filters, saved presets, multi-select, and the view switcher share a single toolbar row that stays pinned to the top of the page as you scroll, so bulk-selecting entries near the bottom of a long library no longer means scrolling back up
 - **Duplicate Detection & Versions** - Find files that are copies of one another, then decide what happens to them. An admin-triggered scan on its own full page (**Settings → Maintenance → Open duplicate detection**) matches byte-identical files, near-identical titles, overlapping page text (so a book scanned twice is caught even though its bytes differ), and gridded/gridless map pairs, labelling each group with why it was flagged and how confident it is. Nothing is ever deleted automatically. Results are reviewed two copies at a time, side by side, so one odd file in a cluster of five can be separated out on its own: per pair you can collapse them into one entry and say what kind of variant the other copy is, copy metadata from the better record onto the one you are keeping, delete a copy, or mark the pair as "not duplicates" - which sticks across every future scan
 - **Campaigns** - Track GM-run and personal campaigns; a markdown notes wiki with deep linking, Markdown/JSON/LegendKeeper import & export, character art and sheets, linked resources, and scheduling
 - **Book Restrictions** - Keep the adventure module your players are inside out of their hands. Restrict a single book, a whole system, or an entire category to _GMs and admins_ or _admins only_, set by admins in the book/system editors, in bulk edit, or in **Settings → Application**. Restricted content is hidden outright - from the library, search, downloads, favourites, and OPDS - rather than shown behind a padlock, since the title and cover are the spoiler. Settings cascade book → system → category, so one free player's guide can stay visible inside an otherwise restricted line, and individual GMs can be granted access to just their own campaign's material. See [Restricting books](#restricting-books)
 - **OPDS Catalog** - Each user can generate a personal OPDS feed URL to connect e-reader apps directly to their library
 - **Docker Ready** - One command to run, mount your library directory, done
 - **Responsive** - Works on desktop, tablet, and phone with mobile navigation
+
+---
+
+## Screenshots
+
+### Library and browsing
+
+| Systems                                         | System detail                                                 |
+| ----------------------------------------------- | ------------------------------------------------------------- |
+| ![Systems view](docs/images/Systems%20View.png) | ![System detail view](docs/images/System%20Detail%20View.png) |
+
+| Search                                         | Tag browser                                   |
+| ---------------------------------------------- | --------------------------------------------- |
+| ![Search your library](docs/images/Search.png) | ![Tag browser](docs/images/Tag%20Browser.png) |
+
+| Favourites                                           |     |
+| ---------------------------------------------------- | --- |
+| ![Favourites page](docs/images/Favorites%20Page.png) |     |
+
+### Reading
+
+| Book view with table of contents                                | In-book search                                            |
+| --------------------------------------------------------------- | --------------------------------------------------------- |
+| ![Book view with ToC](docs/images/Book%20View%20with%20ToC.png) | ![Book view search](docs/images/Book%20View%20Search.png) |
+
+### Maps, tokens, and models
+
+| Maps                                      | Tokens                                      |
+| ----------------------------------------- | ------------------------------------------- |
+| ![Maps page](docs/images/Maps%20Page.png) | ![Token page](docs/images/Token%20Page.png) |
+
+| Token editor                                    | 3D models                                     |
+| ----------------------------------------------- | --------------------------------------------- |
+| ![Token editor](docs/images/Token%20Editor.png) | ![Models page](docs/images/Models%20Page.png) |
+
+| Universal VTT map editor                                | Token vision preview                                                                                    |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| ![UVTT map editor](docs/images/UVTT%20Map%20Editor.png) | ![UVTT map editor token vision preview](docs/images/UVTT%20Map%20Editor%20Token%20Vision%20Preview.png) |
+
+### Audio
+
+| Audio page with soundboard and playlist                                                                       |     |
+| ------------------------------------------------------------------------------------------------------------- | --- |
+| ![Audio page with soundboard and playlist](docs/images/Audio%20page%20with%20soundboard%20and%20playlist.png) |     |
+
+### Campaigns
+
+| Campaign overview                                         | Campaign notes wiki                                             |
+| --------------------------------------------------------- | --------------------------------------------------------------- |
+| ![Campaign overview](docs/images/Campaign%20Overview.png) | ![Campaign notes page](docs/images/Campaign%20Notes%20Page.png) |
+
+---
 
 ## Quick Start
 
@@ -554,7 +606,50 @@ The folder name is shown as a group header in the map gallery. Both image maps a
 
 Animated maps (`.webm`, `.mp4`) and Universal VTT exports (`.uvtt`, `.dd2vtt`) sit alongside the stills they belong to - publishers commonly ship a looping video and a VTT data file next to each still variant - and both are viewable in-app. Animated maps play in the detail view on a muted loop with normal playback controls. Universal VTT files show the battlemap held inside them, and their detail panel lists the grid resolution plus the wall, door, and light counts the file carries for a virtual tabletop (see the [format reference](https://arkenforge.com/universal-vtt-files/)). Both get a gallery thumbnail like any other map: a Universal VTT because the image is right there in the file, and an animated map from a frame decoded a moment into the clip. Grimoire bundles a purpose-built, decode-only build of ffmpeg for this, trimmed to just the codecs a battlemap uses, so the feature costs about 5 MB of image size rather than the several hundred a stock ffmpeg would add. Existing libraries pick these up on the next rescan - any animated map still missing a thumbnail is retried, so you do not need to re-add anything.
 
-Any image map can also be **exported as a Universal VTT file**, from the Download menu on its detail page. The `.uvtt` carries the map image and its grid, so it drops into Foundry, Roll20, or any VTT that reads the format with the grid already lined up, instead of you scaling the image by hand. Walls, doors, and lights are not included - those come from drawing tools that are still to come. Maps that already have a real `.uvtt` linked to them do not offer the option, since the file you already have carries walls and lighting that an export cannot.
+Any image map can also be **exported as a Universal VTT file**, from the Download menu on its detail page. The `.uvtt` carries the map image and its grid, so it drops into Foundry, Roll20, or any VTT that reads the format with the grid already lined up, instead of you scaling the image by hand. Maps that already have a real `.uvtt` linked to them do not offer the option, since the file you already have carries walls and lighting of its own.
+
+#### Drawing walls, doors, and lights
+
+The export can carry more than the image and the grid. **Edit VTT** on a map's detail page opens a full-screen editor for the vision-blocking walls, doors, windows, and lights a virtual tabletop uses for dynamic lighting - the parts of the format that otherwise take a separate tool like Dungeondraft to produce.
+
+Nothing you do in the editor touches your library. The walls and lights are saved against the map inside Grimoire, and the `.uvtt` is built fresh each time you export it: your original image is never modified, and no extra file appears next to it. That also means an edited map can be added to a campaign like any other, and exported from there whenever you need the file.
+
+**Editing a `.uvtt` you already have.** A Universal VTT file is not just viewable - it opens in the editor too, on the walls, doors, and lights it already carries, so you can fix a wall that is in the wrong place rather than redrawing the map from scratch. The file on disk is never rewritten; your changes are saved against the map in Grimoire, and exporting gives you a new `.uvtt` carrying the original's own image alongside your edits. When a map image and a `.uvtt` are linked as versions of each other, **Edit VTT** asks which one you mean - drawing fresh geometry over the picture, or changing what the linked file already holds. Only PDFs and videos are left out, having no single image to draw on.
+
+**A map that is not in your library yet.** The maps page has its own **VTT Editor** button, the same way the tokens page has a token editor. Drop in a map image or an existing `.uvtt` - from your desktop, a purchase you have not filed yet, anywhere - and edit it without adding anything to your library. When you are done, download the `.uvtt`, or send it straight into one of your campaigns as a linked resource, choosing the category it should be filed under. Nothing is written to your library either way, so this works exactly as well on a read-only mount.
+
+**Confirm the grid first.** Everything you draw is measured in grid squares, so the editor opens on the grid rather than the drawing tools: your map appears with the grid Grimoire detected drawn over it, and you can see at a glance whether it lines up. Zoom in to check it closely - at fit-to-window on a large map, one screen pixel covers several of the image's. If it does not line up, the panel beside the map gives you two ways to fix it: say how many squares the map is across and down, which is how most people already know their grid and redraws the overlay as you type, or set the cell size and the grid's offset directly, with nudge buttons for walking an almost-right grid into place a pixel at a time.
+
+Then draw:
+
+- **Walls** block line of sight. Click to place each corner and double-click (or press Enter) to finish the run; close a room by ending where you started. Snapping is a three-way choice - grid intersections, half squares for a diagonal or a split doorway, or free-form for an irregular cave wall.
+- **Object walls** are a separate layer for furniture, pillars, and other scatter. They are kept apart from ordinary walls because virtual tabletops treat them differently - Roll20, for instance, turns them into transparent barriers rather than solid walls.
+- **Doors** and **windows** have a button each, and are drawn as a two-click line across an opening. A door blocks sight until it is opened at the table; a window can be seen through but not walked through.
+- **Lights** are placed with a single click, and open for editing straight away - the panel at the top of the sidebar shows the new light's settings without you having to select it again. Start from a **preset** (candle, sconce, torch, brazier, campfire, moonlight, and a dozen more) picked from a menu or a row of colour swatches, then adjust the range in grid squares, the colour, the intensity, and whether it casts shadows. The preset values are taken from what Dungeondraft itself writes, so a torch starts out looking like one; tune any of them and the picker simply reads as Custom.
+
+Whichever tool you pick, the panel on the right tells you how to drive it - how to finish a wall, how to abandon a half-drawn shape, which keys do what. Holding **Alt** places a single point off the grid without leaving your snap setting, for a room that is square apart from one canted corner.
+
+The sidebar is a stack of collapsible sections. What you have selected sits at the top, since that is what you are looking at after a click; the tool help, layer counts and grid come next, and the player view and map-wide lighting settings anchor the bottom. Fold away anything you have stopped needing - the layer counts keep showing their total while collapsed - and selecting something on the map always reopens the selection panel.
+
+Map-wide, you can set how bright an area with no light of its own looks, with a swatch showing the result, and mark a map whose lighting is **already painted into the artwork**. That last one matters: when it is set, a virtual tabletop may ignore or dim the lights you place, so Grimoire warns you if you have done both.
+
+#### Checking it from a player's chair
+
+**Show player view** drops a token on the map and darkens everything that token could not see - walls cast real shadows, a closed door hides the room behind it, and a window does not. It answers "can my players see around that corner?" in place, instead of by exporting, importing, and moving a token in another program to find out.
+
+Drag the token, or walk it with the arrow keys (hold Shift for half a square). Its sight is described the way a virtual tabletop describes one, with three separate switches:
+
+- **Vision** is the master switch. Turn it off and the token sees nothing at all - which is what an object or scenery token is set to.
+- **Night vision** lets the token see without any light, out to a distance you set. This is darkvision, and it is the only one of the three that genuinely has a range. It is tinted a cool blue in the preview, so you can tell ground that is merely visible from ground that is actually lit.
+- **Token light** is the torch the token carries, which lights the ground around it.
+
+Sight itself is not capped by a number of squares: what stops you seeing is walls and darkness. A token with vision but no night vision and no torch sees only where a placed light reaches, and Grimoire says so rather than leaving you with a black screen.
+
+Lights you have placed light the room they are in, not just the square they sit on - stand anywhere within a lamp's range and you see by it, and you see the ground it falls on from across the room. Walls still apply: a lamp behind a shut door stays behind it, and light spilling around a corner reveals only the floor you can actually see. The **light level with no lights nearby** you set for the map drives how dark the unlit area looks here too, so a map authored with moonlight previews as moonlight rather than as pitch black.
+
+It is a toggle, and off by default, because a darkened map is in the way while you are tracing walls. The token and its vision settings are **preview only**: a `.uvtt` has no concept of a player token, so none of it is saved or written to the exported file.
+
+Undo and redo cover everything, Delete removes whatever is selected, and Escape abandons a shape midway. The editor deliberately offers only what the format can actually carry, so nothing you set is quietly lost on export - which is why there is no wall thickness, secret or locked door, one-way wall, or light animation here. None of them exist in a `.uvtt`; Roll20 and Foundry let you add things like secret doors after importing.
 
 Grimoire works the grid out on its own, from a `(30x40)` in the filename, the image's DPI, or the pixel dimensions. When it gets that wrong, the **Grid** panel on the map's detail page is editable: set the width and height in cells, and optionally the pixels per cell. Fractional values are accepted, because plenty of maps bleed a partial cell past the grid - a 33x24 map with a quarter-cell margin at each edge is really 33.25x24.25. If the numbers you enter imply cells that are not square, Grimoire says so and shows what the image suggests instead, but it still saves what you typed: unusual maps exist, and you are the one who can tell. Reset puts the map back to automatic detection.
 
@@ -562,9 +657,18 @@ Grimoire works the grid out on its own, from a `(30x40)` in the filename, the im
 
 ```
 tokens/
-└── Category/
-    └── token-file.png
+├── Category/
+│   └── token-file.png
+└── Fantasy Frames/          # a token-editor frame folder
+    ├── .frames-container    # the marker that declares it one
+    └── my-ring.svg
 ```
+
+A folder holding a `.frames-container` marker file offers its images as frames in the
+[token editor](#token-editor) - the same convention `books/` uses for
+`.parent-system-container` and friends, so the folder keeps whatever name reads best.
+Frames are ordinary library files and are still indexed as tokens; the marker adds a use
+for them rather than hiding them.
 
 ### Audio - organize by category or creator
 
@@ -675,6 +779,15 @@ the display name lives in the app's tag catalog rather than in `tags.json` (whic
 the app treats as read-only and never rewrites). Tags are matched
 case-insensitively, so `"dungeon"` and `"Dungeon"` are the same tag.
 
+A tag's name cannot contain `/` or `\`. Grimoire has no notion of subtags, so a
+name like `Storage/Box1` would be a flat tag that merely looks nested - and the
+slash broke the address the app uses to reach it, leaving a tag that could be
+created but never renamed or deleted. Those characters are now refused when you
+add a tag, with a note suggesting a separate tag instead. A tag already carrying
+a slash - from an older version, or from a `tags.json`, which is yours and is
+still applied as written - is reachable again, so you can rename, merge, or
+delete it from the Tags page.
+
 ---
 
 ## Ignoring Files with .grimoireignore
@@ -682,6 +795,8 @@ case-insensitively, so `"dungeon"` and `"Dungeon"` are the same tag.
 Add a `.grimoireignore` file to keep files on disk but out of Grimoire. It uses the same syntax as `.gitignore` / `.dockerignore`, so anything matched by a rule is skipped during scanning and never appears in the UI - useful when a book ships extra print variants (black-and-white single pages, zine-sized layouts) you want kept next to the book but hidden.
 
 Place it at your **library root** to apply everywhere, or in any subfolder to add rules for just that subtree. Rules are cumulative and nested, like git.
+
+Folders whose name starts with a dot are skipped automatically and need no rule.
 
 ```
 library/
@@ -779,11 +894,15 @@ of Grimoire's own concepts) built for bulk reorganization:
   looking at the real folder, so you get the real folder. Very large folders are
   refused rather than started and stalled; download a subfolder instead.
 - **Edit an item's metadata** with the same editor the library views use.
-- **Create folders**, including system, category, and container folders. Choosing
-  a container type writes the right marker file for you, so you no longer have to
-  remember `.parent-system-container` and create it by hand. Use the **New folder**
-  button beside _Up_ to create one in the folder you are currently viewing - handy
-  in an empty folder, where there is no row to right-click.
+- **Create folders**, including system, category, container, and frame folders.
+  Choosing a container type writes the right marker file for you, so you no longer
+  have to remember `.parent-system-container` and create it by hand - and the same
+  goes for `.frames-container`, so a new folder of
+  [token frames](#token-editor) is one checkbox rather than a trip to another
+  tool. Each option only appears where it means something: a container type where
+  a game system belongs, the frame checkbox anywhere under `tokens/`. Use the
+  **New folder** button beside _Up_ to create one in the folder you are currently
+  viewing - handy in an empty folder, where there is no row to right-click.
 - **Set up a system in one step** with **Create standard category folders** -
   Core, Supplements, Adventures, Character Sheets, Maps, Handouts, Homebrew, and
   Starter Sets, named so the scanner classifies them correctly. Offered on system
@@ -798,9 +917,21 @@ of Grimoire's own concepts) built for bulk reorganization:
   Sliding your finger cancels the hold, so scrolling the tree still scrolls it.
   Dragging rows to move them is a mouse gesture and is off on touch - the menu's
   **Move to…** does the same job.
-- **Mark a folder NSFW or SFW**, or change its container type, without recreating
-  it. The _One-page RPGs_ and _System-agnostic_ collections are one-of-a-kind:
-  once a folder claims one, it is not offered on any other folder.
+- **Mark a folder NSFW or SFW**, change its container type, or mark it a **frame
+  folder**, without recreating it. The _One-page RPGs_ and _System-agnostic_
+  collections are one-of-a-kind: once a folder claims one, it is not offered on
+  any other folder.
+
+  Each option is offered only where Grimoire actually reads it, so you cannot
+  leave a marker somewhere it does nothing. **Container types** are a `books/`
+  idea - they say "the folders inside me are game systems" - so they appear on a
+  folder standing where a system belongs, and not on a category folder inside a
+  system (marking _Adventures_ a container would tell the next scan that
+  _Adventures_ is a game system) nor anywhere under `maps/`, `tokens/`, `audio/`,
+  or `models/`. **Frame folders** are the mirror image: offered at any depth
+  under `tokens/`, and nowhere else. A marker you created by hand in the wrong
+  place can still be cleared from here.
+
 - **Rescan** from here too: the **Rescan** button beside _Refresh_ re-indexes the
   whole library, and right-click → **Rescan this…** re-indexes just that folder or
   file. _Refresh_ only re-reads the folder listing; a rescan updates what Grimoire
@@ -1031,6 +1162,7 @@ an example runs it.
 | `BACKUP_RETENTION_GB`               | `0`                     | Optional. Keep at most this many gigabytes of backups in total, deleting oldest-first. `0` means unlimited. When set, the field is read-only in the UI. See [Backups](#backups) below.                                                                                                                                                                                                                                                                                                                                                                                                |
 | `LOG_LEVEL`                         | `info`                  | Optional Console/Docker log verbosity: `debug`, `info`, `warning`, `error`, or `critical`. The in-app Logs tab (Settings → Logs) always captures `debug`-level entries regardless of this setting.                                                                                                                                                                                                                                                                                                                                                                                    |
 | `TZ`                                | `UTC`                   | Optional. Timezone for all log timestamps - both console/Docker output and the in-app Logs tab. Use an IANA zone name such as `America/Toronto` or `Europe/Berlin`. Defaults to UTC when unset; an unknown zone name logs a warning and uses UTC.                                                                                                                                                                                                                                                                                                                                     |
+| `UMASK`                             | inherited               | Optional. Octal umask applied to everything Grimoire writes - uploaded files, exported sidecars, thumbnails, and the database (e.g. `022` for `rw-r--r--`, `002` for group-writable, `000` for `rw-rw-rw-`, which is what Unraid users usually want). Useful where you cannot set the process umask yourself, such as Kubernetes. `GRIMOIRE_UMASK` is accepted as an alias. Left unset, Grimoire keeps whatever umask it inherited; an unparseable value is ignored with a warning rather than guessed at.                                                                            |
 | `ALLOW_PASSWORD_AUTHENTICATION`     | -                       | Optional, `true` or `false`. When set, pins password authentication on or off and overrides the toggle in Settings → Authentication (the toggle is shown read-only). When unset, the in-app setting is used. First-run admin setup always requires a username and password regardless of this value.                                                                                                                                                                                                                                                                                  |
 | `GUEST_ACCESS_ENABLED`              | -                       | Optional, `true` or `false`. When set, pins guest invite codes on or off and overrides the toggle in Settings → Authentication (the toggle is shown read-only). When unset, the in-app setting is used. See [Guest invites](#guest-invites) below.                                                                                                                                                                                                                                                                                                                                    |
 | `DISABLE_FOLDER_CATEGORY_INFERENCE` | -                       | Optional, `true` or `false`. When set, pins folder-name category inference on or off and overrides the toggle in Settings → Application (shown read-only). When `true`, books are not auto-assigned a category from their folder names and fall back to `uncategorized`. A per-system `.no-auto-category` marker file disables inference for just that system.                                                                                                                                                                                                                        |
@@ -1429,6 +1561,105 @@ Audio covers are worth calling out: a track's artwork previously came only from 
 image sitting next to it in your library or from the file's own embedded tags, neither of
 which you could change from inside Grimoire. A cover you set here takes precedence over
 both, and removing it hands control back to them.
+
+## Token editor
+
+Turn any picture into a VTT-ready token without leaving Grimoire. Open it from the
+**Token editor** button on the tokens page, from a token's own page, or - the quickest
+route - from a character's portrait in a campaign's member list.
+
+Load art by uploading a file, pasting from the clipboard, dropping it on the page, or
+browsing what Grimoire already holds. Browsing offers your token library and nothing else -
+book covers, album art, and battlemaps are none of them a character portrait, and tokens are
+already the collection of character images. Anything filed elsewhere is still one upload
+away. Then position it: drag to move, scroll to zoom,
+`Shift`+scroll to rotate, and the arrow keys to nudge a pixel at a time. On a touchscreen,
+drag with one finger and pinch or twist with two. Double-click (or press `R`) to start over.
+
+You choose a frame, the output size (140, 256, 512, or 1024 pixels), and an optional
+background colour behind transparent art. The frame decides the token's shape - pick an
+ornate border and the art is cropped to its opening. For a plain round or square token with no
+visible border, pick the circle or square frame and set its colour to **None**: the shape still
+does the cropping, it just draws nothing. With no frame at all you get the full square image.
+The finished token is a PNG with real transparency.
+
+**Two ways out.** **Download** saves the PNG to your device, ready to drop into Roll20,
+Foundry, or anything else. **Send to a campaign** offers whichever of two destinations you
+have the standing for:
+
+- **Send to a character** - the games you play in, one row per character. It becomes that
+  character's VTT token, kept separately from their portrait so making a token never
+  overwrites their artwork. Because setting your own character's things has always been
+  something a player can do, players can make their own tokens, not just GMs.
+- **Send to a campaign you GM** - one row per campaign rather than per character, so running
+  four games does not bury them under twenty characters. Pick a campaign and you then choose
+  either **Set as a character token** - which lists just that campaign's characters - or a
+  resource category, defaulting to the built-in **Tokens** group.
+
+You are only shown the paths that apply to you: a player with no campaign of their own never
+sees the GM route, and someone in no campaigns at all is told so rather than offered a
+destination that would be refused.
+
+Opening the editor from a character's portrait is the exception - it already knows who the
+token is for, so the button simply sets that character's art.
+
+Nothing is written to your library and no new token is added to it: the image is composed in
+your browser and only leaves by one of those two doors. That means the editor works fine on
+a read-only library, and never disturbs a scan.
+
+**Frames.** Five ship with Grimoire. Two are plain shapes - a circle and a square - which
+take any colour you pick, and three are themed role markers (player
+character, non-player character, opponent) that keep their own colour, since that colour is
+part of telling them apart at a glance. You can add your own as well. Mark any folder under `tokens/` as a frame folder - right-click
+it in the [file manager](#in-app-file-management) and choose **Mark as frame folder**, or
+tick the box when creating it - and every PNG, WebP, or SVG inside becomes a frame. (That
+writes an empty `.frames-container` file, which you can equally create by hand.) The folder keeps a
+normal name - `Fantasy Frames`, `Scifi Frames` - and the picker groups frames under it, so
+a system's frames can sit beside that system's tokens.
+
+Frame images are still indexed as ordinary tokens and appear in your token gallery. That is
+deliberate: a frame _is_ a token image, just one you would normally composite rather than
+place on a map. Add a [`.grimoireignore`](#ignoring-files-with-grimoireignore) rule if you
+would rather they stayed out of the gallery. Both the tokens page and
+[in-app file management](#in-app-file-management) badge a folder holding the marker with
+**Frames**, at whatever depth it sits, so you can see which folders feed the editor.
+
+**Finding a frame.** A large collection stays manageable: the frame list scrolls in place
+rather than pushing the page down, each folder group collapses, and a search box filters by
+frame name or folder. Favouriting a frame is the same as favouriting anything else - star it
+in your token gallery, and it appears in a **Favourites** group at the top of the picker. It
+stays listed under its own folder too, so a frame never moves out from where you filed it.
+
+Hovering a frame shows it **enlarged beside the list**. A picker tile is small enough to fit
+a few hundred frames on screen but too small to judge one by - the thing that decides between
+two ornate borders is the detail in the border - so the tiles stay small and a hover shows the
+frame at a size you can actually read.
+
+**Frames that are versions of one another.** A frame folder often holds the same ring more
+than once: a black-and-white cut beside the colour original, a thinner weight, a recoloured
+set. Link them in [duplicate detection](#duplicates-and-multiple-versions) the way you would
+any other file, and the picker shows **one tile** for the frame rather than the same ring
+several times over. Selecting it lists its versions in the space the colour swatches occupy
+for the built-in shapes - the two never both apply, since a frame from your library is a file
+and takes no colour - each named the way versions are named everywhere else ("Black and
+white · v2"). Picking one keeps the frame's own tile lit, so stepping back to the original is
+one click.
+
+**Choosing which version of your art to frame.** The same applies to the picture you are
+turning into a token. When the image you pick from your library has other versions, they are
+offered under it and you choose which one the token is made from - the colour portrait or its
+black-and-white cut are different tokens, and which one you want is not a detail Grimoire
+should pick for you.
+
+The editor reads a frame's crop **from the frame itself** - it fills inward from the centre
+and keeps whatever the frame encloses - so a frame can be any shape, and the art follows its
+real outline rather than a circle. The one requirement is that the outline be **closed**: a
+border with a gap in it lets the fill escape, and the editor falls back to a plain circular
+crop. (That is why the bundled non-player-character frame bridges its decorative notch with a
+small bar.) Frames should be square overall, with a transparent middle, and for SVGs you must
+set explicit `width` and `height` attributes alongside the `viewBox` - Firefox and Safari
+cannot draw one without them. The bundled frames use a `0 0 512 512` viewBox and are worth
+copying as a starting point.
 
 ## Campaigns
 

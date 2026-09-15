@@ -58,6 +58,58 @@ A Docker-based web application for managing your tabletop RPG PDF collection. Br
 - **Docker Ready** - One command to run, mount your library directory, done
 - **Responsive** - Works on desktop, tablet, and phone with mobile navigation
 
+
+---
+
+## Screenshots
+
+### Library and browsing
+
+| Systems | System detail |
+| --- | --- |
+| ![Systems view](docs/images/Systems%20View.png) | ![System detail view](docs/images/System%20Detail%20View.png) |
+
+| Search | Tag browser |
+| --- | --- |
+| ![Search your library](docs/images/Search.png) | ![Tag browser](docs/images/Tag%20Browser.png) |
+
+| Favourites | |
+| --- | --- |
+| ![Favourites page](docs/images/Favorites%20Page.png) | |
+
+### Reading
+
+| Book view with table of contents | In-book search |
+| --- | --- |
+| ![Book view with ToC](docs/images/Book%20View%20with%20ToC.png) | ![Book view search](docs/images/Book%20View%20Search.png) |
+
+### Maps, tokens, and models
+
+| Maps | Tokens |
+| --- | --- |
+| ![Maps page](docs/images/Maps%20Page.png) | ![Token page](docs/images/Token%20Page.png) |
+
+| Token editor | 3D models |
+| --- | --- |
+| ![Token editor](docs/images/Token%20Editor.png) | ![Models page](docs/images/Models%20Page.png) |
+
+| Universal VTT map editor | Token vision preview |
+| --- | --- |
+| ![UVTT map editor](docs/images/UVTT%20Map%20Editor.png) | ![UVTT map editor token vision preview](docs/images/UVTT%20Map%20Editor%20Token%20Vision%20Preview.png) |
+
+### Audio
+
+| Audio page with soundboard and playlist | |
+| --- | --- |
+| ![Audio page with soundboard and playlist](docs/images/Audio%20page%20with%20soundboard%20and%20playlist.png) | |
+
+### Campaigns
+
+| Campaign overview | Campaign notes wiki |
+| --- | --- |
+| ![Campaign overview](docs/images/Campaign%20Overview.png) | ![Campaign notes page](docs/images/Campaign%20Notes%20Page.png) |
+
+---
 ## Quick Start
 
 > New to Docker? See the [Docker Installation Guide](docs/docker-install.md) for a step-by-step walkthrough for Windows, macOS, and Linux.
