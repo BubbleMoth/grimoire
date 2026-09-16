@@ -1,7 +1,7 @@
 # Running from source
 
 Grimoire ships as a Docker image and that's the recommended way to run it (see the
-[README Quick Start](../README.md#quick-start)). If you'd rather build the image yourself
+[Quick Start](../README.md#quick-start)). If you'd rather build the image yourself
 or run the app directly on the host - for development, or on a platform where Docker isn't
 an option - this guide covers both.
 
@@ -23,7 +23,7 @@ slim variant without OCR, target the `slim` stage:
 docker build --target slim --build-arg APP_VERSION=1.5.0 -t grimoire:1.5.0-slim .
 ```
 
-See [OCR](../README.md#ocr) for the difference between the two variants.
+See [OCR](performance.md#ocr) for the difference between the two variants.
 
 ---
 
@@ -56,7 +56,7 @@ export LIBRARY_PATH=/path/to/your/library
 export DATA_PATH=/path/to/your/data
 ```
 
-See [Configuration](../README.md#configuration) for the full list of environment variables.
+See [Configuration](configuration.md) for the full list of environment variables.
 
 ### 4. Start the server
 

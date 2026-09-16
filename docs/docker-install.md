@@ -82,7 +82,7 @@ library/
             └── Dungeon Masters Guide.pdf
 ```
 
-See the main [README](../README.md#library-structure) for the full folder layout, but you can also just drop PDFs in and tidy up later.
+See the main [Library structure](library-structure.md) for the full folder layout, but you can also just drop PDFs in and tidy up later.
 
 ---
 

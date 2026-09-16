@@ -124,20 +124,11 @@ Cuts a stable release. Triggered by pushing a semver tag matching `v[0-9]+.[0-9]
 
 ### Release checklist
 
-1. **Update `README.md` from [`nightly.md`](../nightly.md).** Copy the mirrored content
-   across, dropping the nightly banner and maintainer note at the top and keeping README's
-   own centered header block (logo + badges). Both files sit at the repo root, so relative
-   links need no adjustment. Leave `nightly.md` in place - it stays the working copy for
-   the next cycle.
-
-   Then **repoint `../nightly.md#…` links in `docs/`** at `../README.md#…`. Pages under
-   `docs/` are linked from both files, so they point at `nightly.md` while a feature is
-   unreleased and at `README.md` once it ships:
-   ```bash
-   grep -rn '\.\./nightly\.md#' docs/
-   ```
-   (Prose references to `nightly.md` itself, like the one in this checklist, stay put.)
-2. **Commit and push** the docs change to `main`.
+1. **Check `README.md` and `docs/` describe what is shipping.** User-facing docs are
+   written in the same PR as the feature, so this is a review rather than a rewrite: skim
+   the changes going out and confirm nothing landed undocumented, and that nothing
+   documents a feature that slipped the release.
+2. **Commit and push** any docs change to `main`.
 3. **Tag `main`:**
    ```bash
    git checkout main
@@ -174,7 +165,7 @@ builds and pushes **two** multi-arch image variants (`linux/amd64`, `linux/arm64
 Finally it creates a **GitHub Release** for the tag with auto-generated release notes (from
 merged PRs and commits since the last release).
 
-See [OCR](../README.md#ocr) for the difference between the OCR and slim variants.
+See [OCR](performance.md#ocr) for the difference between the OCR and slim variants.
 
 ### To pull a specific release
 

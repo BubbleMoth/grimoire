@@ -85,7 +85,7 @@ print('Done')
 
 Replace `<container_name>`, `<your_new_password>`, and `<your_username>` with the correct values for your setup. The container name is typically `grimoire` unless you changed it in your compose file.
 
-Alternatively, you can create a new admin account by [pre-seeding a users file](../README.md#pre-seeding-users) and restarting the stack.
+Alternatively, you can create a new admin account by [pre-seeding a users file](users-and-permissions.md#pre-seeding-users) and restarting the stack.
 
 ---
 
